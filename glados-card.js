@@ -4,6 +4,7 @@ class GladosCard extends HTMLElement {
     this.attachShadow({ mode: 'open' });
   }
 
+  // Lovelace calls this to pass the configuration
   setConfig(config) {
     if (!config.entity) {
       throw new Error('Please define an entity (e.g., assist_satellite.living_room) for GLaDOS to track.');
@@ -11,6 +12,7 @@ class GladosCard extends HTMLElement {
     this.config = config;
   }
 
+  // Lovelace calls this whenever any state changes in Home Assistant
   set hass(hass) {
     if (!hass) return;
 
@@ -23,6 +25,7 @@ class GladosCard extends HTMLElement {
     const stateObj = hass.states[this.config.entity];
     if (stateObj) {
       const stateStr = stateObj.state;
+      // Only trigger animation updates if the state actually changed
       if (this._currentState !== stateStr) {
         this._currentState = stateStr;
         if (this.applyState) this.applyState(stateStr);
@@ -38,8 +41,7 @@ class GladosCard extends HTMLElement {
     const zoom = this.config.zoom !== undefined ? this.config.zoom : 85;
     const scale = zoom / 100;
     
-    // Viewbox is now set to 280w x 410h.
-    // Container height is calculated to match this aspect ratio exactly.
+    // Exact container dimensions calculated to match the viewBox aspect ratio
     const width = 280 * scale;
     const height = 410 * scale;
 
@@ -94,8 +96,8 @@ class GladosCard extends HTMLElement {
       </style>
       
       <div id="scene">
-        <!-- Viewbox y-start increased to 110 to crop 30 units off the top; height set to 410 -->
-        <svg id="glados-svg" viewBox="0 110 280 410">
+        <!-- Reverted top crop: y-start is 80; height remains 410 -->
+        <svg id="glados-svg" viewBox="0 80 280 410">
           <defs>
             <linearGradient id="ceramicGrad" x1="0" y1="0" x2="1" y2="0">
               <stop offset="0%" stop-color="#b0b4bc"/>
@@ -412,14 +414,10 @@ class GladosCard extends HTMLElement {
     function setLEDs(color, opacity) {
       if (!el.leds) return;
       el.leds.forEach(l => { l.setAttribute('fill', color); l.setAttribute('opacity', opacity); });
-      if (el.indL1) el.indL1.setAttribute('fill', color);
-      if (el.indL1) el.indL1.setAttribute('opacity', opacity);
-      if (el.indL2) el.indL2.setAttribute('fill', color);
-      if (el.indL2) el.indL2.setAttribute('opacity', opacity);
-      if (el.indR1) el.indR1.setAttribute('fill', color);
-      if (el.indR1) el.indR1.setAttribute('opacity', opacity);
-      if (el.indR2) el.indR2.setAttribute('fill', color);
-      if (el.indR2) el.indR2.setAttribute('opacity', opacity);
+      if (el.indL1) { el.indL1.setAttribute('fill', color); el.indL1.setAttribute('opacity', opacity); }
+      if (el.indL2) { el.indL2.setAttribute('fill', color); el.indL2.setAttribute('opacity', opacity); }
+      if (el.indR1) { el.indR1.setAttribute('fill', color); el.indR1.setAttribute('opacity', opacity); }
+      if (el.indR2) { el.indR2.setAttribute('fill', color); el.indR2.setAttribute('opacity', opacity); }
     }
 
     function setIndicator(color, opacity) {
@@ -533,7 +531,7 @@ class GladosCard extends HTMLElement {
         setLEDs('#ffb800', '.15');
         setIndicator('#ff2200', '.8');
         resetBodySwivel();
-        startIdleCycle();
+        this.startIdleCycle();
       } else if (state === 'listening') {
         setHead(4, 0, -8, 1.0); setBaseLid(0.1, 0.4); setPupil(0, -3);
         setEyeColor('listening');
