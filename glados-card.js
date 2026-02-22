@@ -36,10 +36,10 @@ class GladosCard extends HTMLElement {
     const zoom = this.config.zoom !== undefined ? this.config.zoom : 85;
     const scale = zoom / 100;
     
-    // Viewbox is set to 280w x 390h. 
-    // We calculate container height to match this exact crop.
+    // Viewbox is now set to 280w x 410h.
+    // Container height is calculated to match this aspect ratio exactly.
     const width = 280 * scale;
-    const height = 390 * scale;
+    const height = 410 * scale;
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -92,8 +92,8 @@ class GladosCard extends HTMLElement {
       </style>
       
       <div id="scene">
-        <!-- viewbox height reduced to 390 to crop the bottom dead space -->
-        <svg id="glados-svg" viewBox="0 80 280 390">
+        <!-- Viewbox y-start increased to 110 to crop 30 units off the top; height set to 410 -->
+        <svg id="glados-svg" viewBox="0 110 280 410">
           <defs>
             <linearGradient id="ceramicGrad" x1="0" y1="0" x2="1" y2="0">
               <stop offset="0%" stop-color="#b0b4bc"/>
@@ -505,7 +505,7 @@ class GladosCard extends HTMLElement {
         if (el.eyeHalo) el.eyeHalo.classList.add('breathing');
         setEyeColor('idle');
         resetBodySwivel();
-        startLidBehavior();
+        startIdleCycle();
       } else if (state === 'listening') {
         setHead(4, 0, -8, 1.0); setBaseLid(0.1, 0.4); setPupil(0, -3);
         setEyeColor('listening');
@@ -533,10 +533,6 @@ class GladosCard extends HTMLElement {
 
       this.stopIdleCycle();
       animateGlaDOS(mapped);
-
-      if (mapped === 'idle') {
-        this.startIdleCycle();
-      }
     };
 
     this.applyState('idle');
