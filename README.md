@@ -1,7 +1,6 @@
 # GLaDOS Lovelace Card for Home Assistant
 
-<img width="296" height="407" alt="image" src="https://github.com/user-attachments/assets/8475b787-fc12-4485-a006-cde25ab8c75b" />
-
+<img width="954" height="439" alt="image" src="https://github.com/user-attachments/assets/8cf8be88-e375-46d2-9fb8-7db2061b308c" />
 
 Bring the Aperture Science Enrichment Center to your smart home. This custom Lovelace card provides a fully animated, responsive GLaDOS interface that syncs directly with your Home Assistant Voice Assistant or Assist Satellite entities.
 
