@@ -41,9 +41,9 @@ class GladosCard extends HTMLElement {
     const zoom = this.config.zoom !== undefined ? this.config.zoom : 85;
     const scale = zoom / 100;
     
-    // Exact container dimensions calculated to match the viewBox aspect ratio
+    // Exact container dimensions calculated to match the new viewBox aspect ratio
     const width = 280 * scale;
-    const height = 410 * scale;
+    const height = 400 * scale; // Changed height to 400
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -96,8 +96,8 @@ class GladosCard extends HTMLElement {
       </style>
       
       <div id="scene">
-        <!-- Reverted top crop: y-start is 80; height remains 410 -->
-        <svg id="glados-svg" viewBox="0 80 280 410">
+        <!-- Top crop shifted down to 95; overall height set to 400 -->
+        <svg id="glados-svg" viewBox="0 95 280 400">
           <defs>
             <linearGradient id="ceramicGrad" x1="0" y1="0" x2="1" y2="0">
               <stop offset="0%" stop-color="#b0b4bc"/>
