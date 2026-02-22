@@ -43,7 +43,7 @@ class GladosCard extends HTMLElement {
     
     // Tightly cropped dimensions to remove empty black space
     const width = 280 * scale;
-    const height = 350 * scale;
+    const height = 300 * scale;
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -106,8 +106,9 @@ class GladosCard extends HTMLElement {
       </style>
       
       <div id="scene">
-        <svg id="glados-svg" viewBox="0 95 280 350">
+        <svg id="glados-svg" viewBox="0 116 280 300">
           <defs>
+            <!-- Sharp color stops added to indicate the 3D sloped bevels on the sides -->
             <linearGradient id="ceramicGrad" x1="0" y1="0" x2="1" y2="0">
               <stop offset="0%" stop-color="#8a8d94"/>
               <stop offset="8%" stop-color="#b0b4bc"/>
