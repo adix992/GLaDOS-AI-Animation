@@ -4,7 +4,6 @@ class GladosCard extends HTMLElement {
     this.attachShadow({ mode: 'open' });
   }
 
-  // Lovelace calls this to pass the configuration from your dashboard
   setConfig(config) {
     if (!config.entity) {
       throw new Error('Please define an entity (e.g., assist_satellite.living_room) for GLaDOS to track.');
@@ -12,7 +11,6 @@ class GladosCard extends HTMLElement {
     this.config = config;
   }
 
-  // Lovelace calls this whenever any state changes in Home Assistant
   set hass(hass) {
     if (!this.contentReady) {
       this.setupDOM();
@@ -23,54 +21,52 @@ class GladosCard extends HTMLElement {
     const stateObj = hass.states[this.config.entity];
     if (stateObj) {
       const stateStr = stateObj.state;
-      // Only trigger animation updates if the state actually changed
       if (this._currentState !== stateStr) {
         this._currentState = stateStr;
-        this.shadowRoot.getElementById('entity-label').textContent = this.config.entity;
         if (this.applyState) this.applyState(stateStr);
       }
     }
   }
 
-  // Tells Home Assistant roughly how tall the card is
   getCardSize() {
-    return 8; 
+    return 6; 
   }
 
   setupDOM() {
     const zoom = this.config.zoom !== undefined ? this.config.zoom : 85;
+    const scale = zoom / 100;
     
+    // Calculate exact container dimensions to eliminate empty black bars
+    const width = 280 * scale;
+    const height = 420 * scale;
+
     this.shadowRoot.innerHTML = `
       <style>
-        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;500;700&display=swap');
-        
         :host {
-          display: block;
-          background: #000000;
-          height: 100%;
-          width: 100%;
           display: flex;
-          flex-direction: column;
           align-items: center;
           justify-content: center;
-          font-family: 'Share Tech Mono', monospace; 
-          color: #556;
-          overflow: hidden;
-          position: relative;
-          padding: 20px 0;
-          box-sizing: border-box;
+          background: #000000;
           border-radius: var(--ha-card-border-radius, 12px);
+          overflow: hidden;
+          width: 100%;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         
         #scene {
-          transform: scale(${zoom / 100});
+          width: ${width}px;
+          height: ${height}px;
           display: flex; 
-          flex-direction: column; 
           align-items: center;
           justify-content: center;
         }
-        #glados-svg { overflow: visible; display: block; }
+        
+        #glados-svg { 
+          width: 100%;
+          height: 100%;
+          display: block; 
+          overflow: visible; 
+        }
         
         #body-pivot { transform-origin: 140px 116px; animation: body-sway 8s ease-in-out infinite; }
         @keyframes body-sway {
@@ -92,29 +88,10 @@ class GladosCard extends HTMLElement {
         
         @keyframes danger-flash { 0%,100%{opacity:0} 50%{opacity:1} }
         #danger-ring.active { animation: danger-flash .35s ease-in-out infinite; }
-        
-        #status-bar {
-          margin-top: 20px;
-          display: flex; align-items: center; gap: 10px;
-          font-size: 11px; letter-spacing: 3px; text-transform: uppercase;
-          font-family: 'Rajdhani', sans-serif; font-weight: 500;
-        }
-        #dot { width:7px;height:7px;border-radius:50%;background:#222;transition:background .3s,box-shadow .3s; }
-        @keyframes blink-dot { 0%,49%{opacity:1} 50%,100%{opacity:.1} }
-        #dot.idle       {background:#ffaa00;box-shadow:0 0 8px #ffaa0066;}
-        #dot.listening  {background:#00ccff;box-shadow:0 0 10px #00ccff66;animation:blink-dot .5s steps(1) infinite;}
-        #dot.processing {background:#ff6600;box-shadow:0 0 10px #ff660077;animation:blink-dot 1s ease-in-out infinite;}
-        #dot.responding {background:#ff2200;box-shadow:0 0 12px #ff220077;}
-        #dot.disconnected{background:#222;}
-        
-        #entity-label { 
-          margin-top: 10px;
-          font-size:9px; color:#353540; letter-spacing:2px; font-weight: 700; 
-        }
       </style>
       
       <div id="scene">
-        <svg id="glados-svg" width="280" height="420" viewBox="0 80 280 440">
+        <svg id="glados-svg" viewBox="0 80 280 440">
           <defs>
             <linearGradient id="ceramicGrad" x1="0" y1="0" x2="1" y2="0">
               <stop offset="0%" stop-color="#b0b4bc"/>
@@ -309,16 +286,9 @@ class GladosCard extends HTMLElement {
           </g>
         </svg>
       </div>
-
-      <div id="status-bar">
-        <div id="dot" class="disconnected"></div>
-        <span id="status-text">INITIALIZING</span>
-      </div>
-      <div id="entity-label">--</div>
     `;
   }
 
-  // Encapsulated logic runner
   initGlados() {
     const root = this.shadowRoot;
     const config = this.config;
@@ -341,9 +311,7 @@ class GladosCard extends HTMLElement {
       indL1: root.getElementById('ind-l1'),
       indL2: root.getElementById('ind-l2'),
       indR1: root.getElementById('ind-r1'),
-      indR2: root.getElementById('ind-r2'),
-      dot: root.getElementById('dot'),
-      statusText: root.getElementById('status-text')
+      indR2: root.getElementById('ind-r2')
     };
 
     let stateNow = 'idle';
@@ -440,20 +408,6 @@ class GladosCard extends HTMLElement {
     function setIndicator(color, opacity) {
       el.indicatorDot.setAttribute('fill', color);
       el.indicatorDot.setAttribute('opacity', opacity);
-    }
-
-    const STATUS_LABELS = {
-      idle: 'STANDBY MODE',
-      listening: 'AURAL RECEPTORS ACTIVE',
-      processing: 'COMPUTING DATABANKS',
-      responding: 'VOCALIZING',
-      disconnected: 'SYSTEM OFFLINE'
-    };
-
-    function setStatus(state) {
-      el.dot.className = '';
-      el.dot.classList.add(state);
-      el.statusText.textContent = STATUS_LABELS[state] || 'STANDBY MODE';
     }
 
     const TALK_MOVES = [
@@ -583,7 +537,6 @@ class GladosCard extends HTMLElement {
       }
     };
 
-    // Main API called from the Hass setter above
     this.applyState = (raw) => {
       const s = (raw || 'idle').toLowerCase();
       const mapped =
@@ -593,7 +546,6 @@ class GladosCard extends HTMLElement {
         s.includes('wake') ? 'listening' : 'idle';
 
       this.stopIdleCycle();
-      setStatus(mapped);
       animateGlaDOS(mapped);
 
       if (mapped === 'idle') {
@@ -601,11 +553,9 @@ class GladosCard extends HTMLElement {
       }
     };
 
-    // Kickoff
     this.applyState('idle');
   }
 
-  // Lifecycle teardown
   disconnectedCallback() {
     if (this.stopIdleCycle) this.stopIdleCycle();
   }
