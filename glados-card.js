@@ -71,6 +71,21 @@ class GladosCard extends HTMLElement {
           height: 100%;
           display: block; 
           overflow: visible; 
+          /* Optimization: CSS variables for LED states */
+          --led-color: #ffb800;
+          --led-opacity: 0.15;
+        }
+
+        /* Optimization: Bind LED elements to the variables */
+        .led-dot, #ind-l1, #ind-l2, #ind-r1, #ind-r2 {
+          transition: fill 0.2s, opacity 0.2s;
+          fill: var(--led-color);
+          opacity: var(--led-opacity);
+        }
+
+        /* Optimization: Promote moving layers to GPU */
+        #body-pivot, #head-sway-pivot, #glados-head, #eyeball-assembly, #eye-pupil, #bellows, #eye-lid, #eye-lid-bottom {
+          will-change: transform;
         }
         
         #body-pivot { transform-origin: 140px 116px; animation: body-sway 8s ease-in-out infinite; }
@@ -108,7 +123,6 @@ class GladosCard extends HTMLElement {
       <div id="scene">
         <svg id="glados-svg" viewBox="0 116 280 320">
           <defs>
-            <!-- Sharp color stops added to indicate the 3D sloped bevels on the sides -->
             <linearGradient id="ceramicGrad" x1="0" y1="0" x2="1" y2="0">
               <stop offset="0%" stop-color="#8a8d94"/>
               <stop offset="8%" stop-color="#b0b4bc"/>
@@ -243,25 +257,25 @@ class GladosCard extends HTMLElement {
               <rect x="94" y="135" width="36" height="20" rx="2.5" fill="#050508" stroke="#101014" stroke-width=".6"/>
               <rect x="96" y="137" width="32" height="16" rx="1.5" fill="#020202"/>
               <g id="led-matrix-left" class="led-matrix" filter="url(#ledGlow)">
-                <rect class="led-dot" x="98" y="140" width="28" height="2" rx="1" fill="#ffb800" opacity=".2"/>
-                <rect class="led-dot" x="98" y="145" width="28" height="2" rx="1" fill="#ffb800" opacity=".2"/>
-                <rect class="led-dot" x="98" y="150" width="28" height="2" rx="1" fill="#ffb800" opacity=".2"/>
+                <rect class="led-dot" x="98" y="140" width="28" height="2" rx="1" />
+                <rect class="led-dot" x="98" y="145" width="28" height="2" rx="1" />
+                <rect class="led-dot" x="98" y="150" width="28" height="2" rx="1" />
               </g>
               <rect x="150" y="135" width="36" height="20" rx="2.5" fill="#050508" stroke="#101014" stroke-width=".6"/>
               <rect x="152" y="137" width="32" height="16" rx="1.5" fill="#020202"/>
               <g id="led-matrix-right" class="led-matrix" filter="url(#ledGlow)">
-                <rect class="led-dot" x="154" y="140" width="28" height="2" rx="1" fill="#ffb800" opacity=".2"/>
-                <rect class="led-dot" x="154" y="145" width="28" height="2" rx="1" fill="#ffb800" opacity=".2"/>
-                <rect class="led-dot" x="154" y="150" width="28" height="2" rx="1" fill="#ffb800" opacity=".2"/>
+                <rect class="led-dot" x="154" y="140" width="28" height="2" rx="1" />
+                <rect class="led-dot" x="154" y="145" width="28" height="2" rx="1" />
+                <rect class="led-dot" x="154" y="150" width="28" height="2" rx="1" />
               </g>
               <circle cx="100" cy="180" r="2.5" fill="#0a0a0e" stroke="#101014" stroke-width=".5"/>
-              <circle id="ind-l1" cx="100" cy="180" r="1.5" fill="#ffb800" opacity=".2"/>
+              <circle id="ind-l1" cx="100" cy="180" r="1.5" />
               <circle cx="108" cy="180" r="2.5" fill="#0a0a0e" stroke="#101014" stroke-width=".5"/>
-              <circle id="ind-l2" cx="108" cy="180" r="1.5" fill="#ffb800" opacity=".2"/>
+              <circle id="ind-l2" cx="108" cy="180" r="1.5" />
               <circle cx="172" cy="180" r="2.5" fill="#0a0a0e" stroke="#101014" stroke-width=".5"/>
-              <circle id="ind-r1" cx="172" cy="180" r="1.5" fill="#ffb800" opacity=".2"/>
+              <circle id="ind-r1" cx="172" cy="180" r="1.5" />
               <circle cx="180" cy="180" r="2.5" fill="#0a0a0e" stroke="#101014" stroke-width=".5"/>
-              <circle id="ind-r2" cx="180" cy="180" r="1.5" fill="#ffb800" opacity=".2"/>
+              <circle id="ind-r2" cx="180" cy="180" r="1.5" />
               <path d="M88 208 L90 224 Q140 240 190 224 L192 208 Z" fill="#0a0a0e" stroke="#050508" stroke-width=".9"/>
               <rect x="118" y="232" width="44" height="20" rx="5" fill="#101014" stroke="#08080c" stroke-width="1"/>
               <rect x="120" y="234" width="40" height="16" rx="4" fill="#08080a"/>
@@ -350,6 +364,7 @@ class GladosCard extends HTMLElement {
     const config = this.config;
 
     const el = {
+      svg: root.getElementById('glados-svg'),
       head: root.getElementById('glados-head'),
       bodyPivot: root.getElementById('body-pivot'),
       eyeLayerIdle: root.getElementById('eye-layer-idle'),
@@ -364,15 +379,11 @@ class GladosCard extends HTMLElement {
       lidTop: root.getElementById('eye-lid'),
       lidBot: root.getElementById('eye-lid-bottom'),
       dangerRing: root.getElementById('danger-ring'),
-      ledMatrices: root.querySelectorAll('.led-matrix'),
-      sideInds: [
-        root.getElementById('ind-l1'), root.getElementById('ind-l2'), 
-        root.getElementById('ind-r1'), root.getElementById('ind-r2')
-      ]
+      ledMatrices: root.querySelectorAll('.led-matrix')
     };
 
     let stateNow = 'idle', talkPhase = 0, talkAnim = null, lidTimer = null;
-    let pupilTimer = null, idleTimer = null, glitchTimer = null;
+    let pupilTimer = null, idleTimer = null, glitchRaf = null;
     let currentBaseLid = 0;
 
     function setHead(rot, tx, ty, scale = 1.0, dur, ease = "cubic-bezier(0.34,1.06,0.64,1)") {
@@ -412,15 +423,10 @@ class GladosCard extends HTMLElement {
       el.bellows.style.transform = `translateY(${ey}px)`;
     }
 
+    // Optimization: Update via CSS variables instead of DOM queries
     function setLEDs(color, opacity) {
-      root.querySelectorAll('.led-dot').forEach(d => {
-        d.setAttribute('fill', color);
-        d.setAttribute('opacity', opacity);
-      });
-      el.sideInds.forEach(i => {
-        i.setAttribute('fill', color);
-        i.setAttribute('opacity', opacity);
-      });
+      el.svg.style.setProperty('--led-color', color);
+      el.svg.style.setProperty('--led-opacity', opacity);
     }
 
     function startLidBehavior() {
@@ -453,28 +459,43 @@ class GladosCard extends HTMLElement {
       { name: 'bored', exec() { setHead(2, 0, 20, 0.96, 2.8); setBaseLid(0.7, 1.5); setBodySwivel(1, 1, 3.0); setTimeout(() => { if (stateNow === 'idle') setBaseLid(0, 1.5); }, 1500); }, min: 7000, max: 14000, weight: 1.5 },
       { name: 'full_swivel', exec() { setBodySwivel(-6, 0.96, 2.5); setTimeout(() => { setHead(6, 0, -3, 1.02, 1.2); setBaseLid(0, 0.8); }, 600); }, min: 4000, max: 8000, weight: 0.8 },
       { name: 'glitch', exec() {
+          // Optimization: Use RequestAnimationFrame
           let count = 0;
-          if (glitchTimer) clearInterval(glitchTimer);
-          glitchTimer = setInterval(() => {
-            if (stateNow !== 'idle' || count > 12) {
-              clearInterval(glitchTimer);
-              if (stateNow === 'idle') {
-                el.eyeHalo.setAttribute('fill', '#330800');
-                el.eyeCenter.setAttribute('fill', '#ffcc00');
-                setHead(0, 0, 0, 1.0, 0.4);
+          let lastTime = 0;
+          
+          if (glitchRaf) cancelAnimationFrame(glitchRaf);
+
+          function glitchLoop(timestamp) {
+            if (!lastTime) lastTime = timestamp;
+            const elapsed = timestamp - lastTime;
+            
+            if (elapsed > 60) {
+              lastTime = timestamp;
+              
+              if (stateNow !== 'idle' || count > 12) {
+                cancelAnimationFrame(glitchRaf);
+                glitchRaf = null;
+                if (stateNow === 'idle') {
+                  el.eyeHalo.setAttribute('fill', '#330800');
+                  el.eyeCenter.setAttribute('fill', '#ffcc00');
+                  setHead(0, 0, 0, 1.0, 0.4);
+                }
+                return;
               }
-              return;
+
+              setHead((Math.random()-0.5)*10, (Math.random()-0.5)*8, (Math.random()-0.5)*8, 1.0, 0.05, "linear");
+              if (count % 2 === 0) {
+                 el.eyeHalo.setAttribute('fill', '#110000');
+                 el.eyeCenter.setAttribute('fill', '#884400');
+              } else {
+                 el.eyeHalo.setAttribute('fill', '#ffb800');
+                 el.eyeCenter.setAttribute('fill', '#ffffff');
+              }
+              count++;
             }
-            setHead((Math.random()-0.5)*10, (Math.random()-0.5)*8, (Math.random()-0.5)*8, 1.0, 0.05, "linear");
-            if (count % 2 === 0) {
-               el.eyeHalo.setAttribute('fill', '#110000');
-               el.eyeCenter.setAttribute('fill', '#884400');
-            } else {
-               el.eyeHalo.setAttribute('fill', '#ffb800');
-               el.eyeCenter.setAttribute('fill', '#ffffff');
-            }
-            count++;
-          }, 60);
+            glitchRaf = requestAnimationFrame(glitchLoop);
+          }
+          glitchRaf = requestAnimationFrame(glitchLoop);
       }, min: 4000, max: 7000, weight: 0.3 }
     ];
 
@@ -522,10 +543,11 @@ class GladosCard extends HTMLElement {
       idleTimer = setTimeout(runNextIdleBehavior, 2000 + Math.random() * 3000);
     };
 
+    // Optimization: Handle RAF cleanup
     this.stopIdleCycle = () => {
       if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
       if (pupilTimer) { clearTimeout(pupilTimer); pupilTimer = null; }
-      if (glitchTimer) { clearInterval(glitchTimer); glitchTimer = null; }
+      if (glitchRaf) { cancelAnimationFrame(glitchRaf); glitchRaf = null; }
     };
 
     const TALK_MOVES = [
