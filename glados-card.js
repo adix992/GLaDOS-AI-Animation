@@ -43,7 +43,7 @@ class GladosCard extends HTMLElement {
     
     // Tightly cropped dimensions to remove empty black space
     const width = 280 * scale;
-    const height = 300 * scale;
+    const height = 420 * scale;
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -106,7 +106,7 @@ class GladosCard extends HTMLElement {
       </style>
       
       <div id="scene">
-        <svg id="glados-svg" viewBox="0 116 280 300">
+        <svg id="glados-svg" viewBox="0 116 280 420">
           <defs>
             <!-- Sharp color stops added to indicate the 3D sloped bevels on the sides -->
             <linearGradient id="ceramicGrad" x1="0" y1="0" x2="1" y2="0">
@@ -211,13 +211,13 @@ class GladosCard extends HTMLElement {
             </linearGradient>
 
             <clipPath id="cavityClip">
-               <rect x="94" y="269" width="66" height="190" rx="33"/>
+               <rect x="97" y="269" width="66" height="190" rx="33"/>
             </clipPath>
             <clipPath id="trackClip">
-               <rect x="104" y="279" width="46" height="170" rx="23"/>
+               <rect x="107" y="279" width="46" height="170" rx="23"/>
             </clipPath>
             <clipPath id="eyeballClip">
-               <circle cx="127" cy="364" r="25.5"/>
+               <circle cx="130" cy="364" r="25.5"/>
             </clipPath>
           </defs>
 
@@ -282,66 +282,66 @@ class GladosCard extends HTMLElement {
           </g>
 
           <g id="glados-head-wrapper" transform="translate(0, -65)">
-            <g id="head-sway-pivot">
-              <g id="glados-head">
-                <ellipse cx="140" cy="285" rx="18" ry="6" fill="#181824" stroke="#0a0a0f" stroke-width="1"/>
-                <ellipse cx="140" cy="285" rx="12" ry="3.8" fill="#101015" stroke="#181824" stroke-width=".6"/>
-                
-                <rect x="75" y="219" width="130" height="260" rx="60" fill="url(#ceramicGrad)"/>
-                <rect x="75" y="219" width="130" height="260" rx="60" fill="url(#ceramicShadow)"/>
-                
-                <rect x="90" y="265" width="76" height="200" rx="38" fill="#000" opacity="0.6" filter="url(#softGlow)"/>
-                <rect x="88" y="263" width="78" height="202" rx="39" fill="url(#bezelGrad)" stroke="#1a1c22" stroke-width="1"/>
-                <rect x="90" y="265" width="74" height="198" rx="37" fill="none" stroke="#6a6d75" stroke-width="1.5"/>
+        <g id="head-sway-pivot">
+          <g id="glados-head">
+            <ellipse cx="140" cy="285" rx="18" ry="6" fill="#181824" stroke="#0a0a0f" stroke-width="1"/>
+            <ellipse cx="140" cy="285" rx="12" ry="3.8" fill="#101015" stroke="#181824" stroke-width=".6"/>
+            
+            <rect x="75" y="232" width="130" height="247" rx="60" fill="url(#ceramicGrad)"/>
+            <rect x="75" y="232" width="130" height="247" rx="60" fill="url(#ceramicShadow)"/>
+            
+            <rect x="93" y="265" width="76" height="200" rx="38" fill="#000" opacity="0.6" filter="url(#softGlow)"/>
+            <rect x="91" y="263" width="78" height="202" rx="39" fill="url(#bezelGrad)" stroke="#1a1c22" stroke-width="1"/>
+            <rect x="93" y="265" width="74" height="198" rx="37" fill="none" stroke="#6a6d75" stroke-width="1.5"/>
 
-                <g clip-path="url(#cavityClip)">
-                   <rect x="94" y="269" width="66" height="190" rx="33" fill="url(#cavityGrad)"/>
-                   <rect x="94" y="269" width="66" height="190" rx="33" fill="none" stroke="#050607" stroke-width="5" opacity="0.9"/>
-                   
-                   <rect x="104" y="279" width="46" height="170" rx="23" fill="url(#trackGrad)" stroke="#000000" stroke-width="3"/>
-                   
-                   <g clip-path="url(#trackClip)">
-                      <g id="bellows" style="transition: transform 0.15s ease-out;">
-                         <g stroke="#000" stroke-width="4.5" stroke-linecap="butt" opacity="0.9">
-                            <line x1="104" y1="140" x2="150" y2="140" /><line x1="104" y1="152" x2="150" y2="152" /><line x1="104" y1="164" x2="150" y2="164" /><line x1="104" y1="176" x2="150" y2="176" /><line x1="104" y1="188" x2="150" y2="188" /><line x1="104" y1="200" x2="150" y2="200" /><line x1="104" y1="212" x2="150" y2="212" /><line x1="104" y1="224" x2="150" y2="224" /><line x1="104" y1="236" x2="150" y2="236" /><line x1="104" y1="248" x2="150" y2="248" /><line x1="104" y1="260" x2="150" y2="260" /><line x1="104" y1="272" x2="150" y2="272" /><line x1="104" y1="284" x2="150" y2="284" /><line x1="104" y1="296" x2="150" y2="296" /><line x1="104" y1="308" x2="150" y2="308" /><line x1="104" y1="320" x2="150" y2="320" /><line x1="104" y1="332" x2="150" y2="332" /><line x1="104" y1="344" x2="150" y2="344" /><line x1="104" y1="356" x2="150" y2="356" /><line x1="104" y1="368" x2="150" y2="368" /><line x1="104" y1="380" x2="150" y2="380" /><line x1="104" y1="392" x2="150" y2="392" /><line x1="104" y1="404" x2="150" y2="404" /><line x1="104" y1="416" x2="150" y2="416" /><line x1="104" y1="428" x2="150" y2="428" /><line x1="104" y1="440" x2="150" y2="440" /><line x1="104" y1="452" x2="150" y2="452" /><line x1="104" y1="464" x2="150" y2="464" /><line x1="104" y1="476" x2="150" y2="476" /><line x1="104" y1="488" x2="150" y2="488" /><line x1="104" y1="500" x2="150" y2="500" /><line x1="104" y1="512" x2="150" y2="512" /><line x1="104" y1="524" x2="150" y2="524" />
-                         </g>
-                      </g>
-                   </g>
+            <g clip-path="url(#cavityClip)">
+               <rect x="97" y="269" width="66" height="190" rx="33" fill="url(#cavityGrad)"/>
+               <rect x="97" y="269" width="66" height="190" rx="33" fill="none" stroke="#050607" stroke-width="5" opacity="0.9"/>
+               
+               <rect x="107" y="279" width="46" height="170" rx="23" fill="url(#trackGrad)" stroke="#000000" stroke-width="3"/>
+               
+               <g clip-path="url(#trackClip)">
+                  <g id="bellows" style="transition: transform 0.15s ease-out;">
+                     <g stroke="#000" stroke-width="4.5" stroke-linecap="butt" opacity="0.9">
+                        <line x1="107" y1="140" x2="153" y2="140" /><line x1="107" y1="152" x2="153" y2="152" /><line x1="107" y1="164" x2="153" y2="164" /><line x1="107" y1="176" x2="153" y2="176" /><line x1="107" y1="188" x2="153" y2="188" /><line x1="107" y1="200" x2="153" y2="200" /><line x1="107" y1="212" x2="153" y2="212" /><line x1="107" y1="224" x2="153" y2="224" /><line x1="107" y1="236" x2="153" y2="236" /><line x1="107" y1="248" x2="153" y2="248" /><line x1="107" y1="260" x2="153" y2="260" /><line x1="107" y1="272" x2="153" y2="272" /><line x1="107" y1="284" x2="153" y2="284" /><line x1="107" y1="296" x2="153" y2="296" /><line x1="107" y1="308" x2="153" y2="308" /><line x1="107" y1="320" x2="153" y2="320" /><line x1="107" y1="332" x2="153" y2="332" /><line x1="107" y1="344" x2="153" y2="344" /><line x1="107" y1="356" x2="153" y2="356" /><line x1="107" y1="368" x2="153" y2="368" /><line x1="107" y1="380" x2="153" y2="380" /><line x1="107" y1="392" x2="153" y2="392" /><line x1="107" y1="404" x2="153" y2="404" /><line x1="107" y1="416" x2="153" y2="416" /><line x1="107" y1="428" x2="153" y2="428" /><line x1="107" y1="440" x2="153" y2="440" /><line x1="107" y1="452" x2="153" y2="452" /><line x1="107" y1="464" x2="153" y2="464" /><line x1="107" y1="476" x2="153" y2="476" /><line x1="107" y1="488" x2="153" y2="488" /><line x1="107" y1="500" x2="153" y2="500" /><line x1="107" y1="512" x2="153" y2="512" /><line x1="107" y1="524" x2="153" y2="524" />
+                     </g>
+                  </g>
+               </g>
 
-                   <g id="eyeball-assembly" style="transition: transform 0.15s ease-out;">
-                      <circle cx="127" cy="364" r="26" fill="#1c1e22" stroke="#000" stroke-width="2"/>
-                      <circle cx="127" cy="364" r="23" fill="#0a0b0c"/>
-                      
-                      <circle cx="144" cy="388" r="3.5" fill="#1a0000" stroke="#000" stroke-width="1"/>
-                      <circle id="indicator-dot" cx="144" cy="388" r="2.5" fill="#ff2200" opacity="0.8" filter="url(#softGlow)"/>
+               <g id="eyeball-assembly" style="transition: transform 0.15s ease-out;">
+                  <circle cx="130" cy="364" r="26" fill="#1c1e22" stroke="#000" stroke-width="2"/>
+                  <circle cx="130" cy="364" r="23" fill="#0a0b0c"/>
+                  
+                  <circle cx="147" cy="388" r="3.5" fill="#1a0000" stroke="#000" stroke-width="1"/>
+                  <circle id="indicator-dot" cx="147" cy="388" r="2.5" fill="#ff2200" opacity="0.8" filter="url(#softGlow)"/>
 
-                      <circle id="eye-halo" cx="127" cy="364" r="25" fill="#330800" opacity=".05" filter="url(#eyeBloom)"/>
-                      
-                      <g id="eye-pupil" style="transition: transform 0.15s ease-out;">
-                        <circle id="eye-layer-idle" cx="127" cy="364" r="17.6" fill="url(#eyeGradIdle)" filter="url(#softGlow)" class="eye-layer" opacity="1" />
-                        <circle id="eye-layer-listen" cx="127" cy="364" r="17.6" fill="url(#eyeGradListen)" filter="url(#softGlow)" class="eye-layer" opacity="0" />
-                        <circle id="eye-layer-process" cx="127" cy="364" r="17.6" fill="url(#eyeGradProcess)" filter="url(#softGlow)" class="eye-layer" opacity="0" />
-                        <circle id="eye-layer-respond" cx="127" cy="364" r="17.6" fill="url(#eyeGradRespond)" filter="url(#softGlow)" class="eye-layer" opacity="0" />
-                        <circle id="eye-center" cx="127" cy="364" r="6.6" fill="#ffe855" />
-                        <circle cx="125" cy="362" r="2.2" fill="#ffffff" opacity="0.7" />
-                      </g>
+                  <circle id="eye-halo" cx="130" cy="364" r="25" fill="#330800" opacity=".05" filter="url(#eyeBloom)"/>
+                  
+                  <g id="eye-pupil" style="transition: transform 0.15s ease-out;">
+                    <circle id="eye-layer-idle" cx="130" cy="364" r="17.6" fill="url(#eyeGradIdle)" filter="url(#softGlow)" class="eye-layer" opacity="1" />
+                    <circle id="eye-layer-listen" cx="130" cy="364" r="17.6" fill="url(#eyeGradListen)" filter="url(#softGlow)" class="eye-layer" opacity="0" />
+                    <circle id="eye-layer-process" cx="130" cy="364" r="17.6" fill="url(#eyeGradProcess)" filter="url(#softGlow)" class="eye-layer" opacity="0" />
+                    <circle id="eye-layer-respond" cx="130" cy="364" r="17.6" fill="url(#eyeGradRespond)" filter="url(#softGlow)" class="eye-layer" opacity="0" />
+                    <circle id="eye-center" cx="130" cy="364" r="6.6" fill="#ffe855" />
+                    <circle cx="128" cy="362" r="2.2" fill="#ffffff" opacity="0.7" />
+                  </g>
 
-                      <g clip-path="url(#eyeballClip)">
-                         <path id="eye-lid" d="M 77 200 L 177 200 L 177 364 L 153 364 A 26 26 0 0 0 101 364 L 77 364 Z" fill="url(#lidGrad)" stroke="#000" stroke-width="2" style="transform:translateY(0px); transition:transform 0.7s ease-in-out;"/>
-                         <path id="eye-lid-bottom" d="M 77 500 L 177 500 L 177 364 L 153 364 A 26 26 0 0 1 101 364 L 77 364 Z" fill="url(#lidGradFlip)" stroke="#000" stroke-width="2" style="transform:translateY(0px); transition:transform 0.7s ease-in-out;"/>
-                      </g>
-                   </g>
-                </g>
-
-                <path d="M 89 359 L 94 361 L 94 367 L 89 369 Z" fill="#050505"/>
-                <path d="M 89 379 L 94 381 L 94 389 L 89 391 Z" fill="#050505"/>
-                
-                <rect id="danger-ring" x="94" y="269" width="66" height="190" rx="33" fill="none" stroke="#ff2200" stroke-width="2" opacity="0"/>
-              </g>
+                  <g clip-path="url(#eyeballClip)">
+                     <path id="eye-lid" d="M 80 200 L 180 200 L 180 364 L 156 364 A 26 26 0 0 0 104 364 L 80 364 Z" fill="url(#lidGrad)" stroke="#000" stroke-width="2" style="transform:translateY(0px); transition:transform 0.7s ease-in-out;"/>
+                     <path id="eye-lid-bottom" d="M 80 500 L 180 500 L 180 364 L 156 364 A 26 26 0 0 1 104 364 L 80 364 Z" fill="url(#lidGradFlip)" stroke="#000" stroke-width="2" style="transform:translateY(0px); transition:transform 0.7s ease-in-out;"/>
+                  </g>
+               </g>
             </g>
+
+            <path d="M 92 359 L 97 361 L 97 367 L 92 369 Z" fill="#050505"/>
+            <path d="M 92 379 L 97 381 L 97 389 L 92 391 Z" fill="#050505"/>
+            
+            <rect id="danger-ring" x="97" y="269" width="66" height="190" rx="33" fill="none" stroke="#ff2200" stroke-width="2" opacity="0"/>
           </g>
-        </svg>
-      </div>
+        </g>
+      </g>
+    </svg>
+  </div>
     `;
   }
 
