@@ -60,7 +60,7 @@ GLaDOS tracks the state of your voice assistant entity and visually responds acc
 
 2. Click on the 3 dots in the top right corner and select **Custom repositories**.
 
-3. Add the URL to this repository and select **Lovelace** as the category.
+3. Add the URL to this repository and select **Dashboard** as the category.
 
 4. Click **Install**.
 
