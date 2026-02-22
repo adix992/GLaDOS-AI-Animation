@@ -41,9 +41,9 @@ class GladosCard extends HTMLElement {
     const zoom = this.config.zoom !== undefined ? this.config.zoom : 85;
     const scale = zoom / 100;
     
-    // Exact container dimensions calculated to match the new viewBox aspect ratio
+    // Exact container dimensions calculated to match the viewBox aspect ratio
     const width = 280 * scale;
-    const height = 400 * scale; // Changed height to 400
+    const height = 410 * scale;
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -88,7 +88,8 @@ class GladosCard extends HTMLElement {
         #eye-halo, #eye-center { transition: fill 0.8s ease-in-out; }
         .eye-layer { transition: opacity 0.8s ease-in-out; }
         
-        @keyframes eye-breathe { 0%,100%{opacity:.02} 48%{opacity:.8} }
+        /* Dramatically reduced peak opacity to keep the glow very subtle */
+        @keyframes eye-breathe { 0%,100%{opacity:.02} 48%{opacity:.2} }
         #eye-halo.breathing { animation: eye-breathe 8s ease-in-out infinite; }
         
         @keyframes danger-flash { 0%,100%{opacity:0} 50%{opacity:1} }
@@ -96,8 +97,7 @@ class GladosCard extends HTMLElement {
       </style>
       
       <div id="scene">
-        <!-- Top crop shifted down to 95; overall height set to 400 -->
-        <svg id="glados-svg" viewBox="0 95 280 400">
+        <svg id="glados-svg" viewBox="0 80 280 410">
           <defs>
             <linearGradient id="ceramicGrad" x1="0" y1="0" x2="1" y2="0">
               <stop offset="0%" stop-color="#b0b4bc"/>
@@ -254,7 +254,7 @@ class GladosCard extends HTMLElement {
                 <circle cx="140" cy="364" r="28" fill="#1c1e22" stroke="#000" stroke-width="2"/>
                 <circle cx="140" cy="364" r="23" fill="#0a0b0c"/>
                 
-                <circle id="eye-halo" cx="140" cy="364" r="26" fill="#ffb800" opacity=".4" filter="url(#eyeBloom)"/>
+                <circle id="eye-halo" cx="140" cy="364" r="26" fill="#330800" opacity=".05" filter="url(#eyeBloom)"/>
                 
                 <g id="eye-pupil" style="transition: transform 0.15s ease-out;">
                   <circle id="eye-layer-idle" cx="140" cy="364" r="16" fill="url(#eyeGradIdle)" filter="url(#softGlow)" class="eye-layer" opacity="1" />
@@ -397,7 +397,8 @@ class GladosCard extends HTMLElement {
       el.eyeLayerRespond.style.opacity = (state === 'responding') ? '1' : '0';
 
       if (state === 'idle') {
-        el.eyeHalo.setAttribute('fill', '#ffb800');
+        // Deep muted burnt orange/brown to kill the neon vibrancy
+        el.eyeHalo.setAttribute('fill', '#330800');
         el.eyeCenter.setAttribute('fill', '#ffe855');
       } else if (state === 'listening') {
         el.eyeHalo.setAttribute('fill', '#00ccff');
