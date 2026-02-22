@@ -36,9 +36,10 @@ class GladosCard extends HTMLElement {
     const zoom = this.config.zoom !== undefined ? this.config.zoom : 85;
     const scale = zoom / 100;
     
-    // Calculate exact container dimensions to eliminate empty black bars
+    // Viewbox is set to 280w x 390h. 
+    // We calculate container height to match this exact crop.
     const width = 280 * scale;
-    const height = 420 * scale;
+    const height = 390 * scale;
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -91,7 +92,8 @@ class GladosCard extends HTMLElement {
       </style>
       
       <div id="scene">
-        <svg id="glados-svg" viewBox="0 80 280 440">
+        <!-- viewbox height reduced to 390 to crop the bottom dead space -->
+        <svg id="glados-svg" viewBox="0 80 280 390">
           <defs>
             <linearGradient id="ceramicGrad" x1="0" y1="0" x2="1" y2="0">
               <stop offset="0%" stop-color="#b0b4bc"/>
@@ -306,12 +308,7 @@ class GladosCard extends HTMLElement {
       lidTop: root.getElementById('eye-lid'),
       lidBot: root.getElementById('eye-lid-bottom'),
       dangerRing: root.getElementById('danger-ring'),
-      indicatorDot: root.getElementById('indicator-dot'),
-      leds: root.querySelectorAll('.led-dot'),
-      indL1: root.getElementById('ind-l1'),
-      indL2: root.getElementById('ind-l2'),
-      indR1: root.getElementById('ind-r1'),
-      indR2: root.getElementById('ind-r2')
+      indicatorDot: root.getElementById('indicator-dot')
     };
 
     let stateNow = 'idle';
@@ -323,23 +320,27 @@ class GladosCard extends HTMLElement {
     let pupilTimer = null;
 
     function setHead(rot, tx, ty, dur, ease = "cubic-bezier(0.34,1.06,0.64,1)") {
+      if (!el.head) return;
       el.head.style.transition = `transform ${dur || 1.8}s ${ease}`;
       el.head.style.transform = `rotate(${rot}deg) translate(${tx}px,${ty}px)`;
     }
 
     function setBodySwivel(rot, sx, dur) {
+      if (!el.bodyPivot) return;
       el.bodyPivot.style.transition = `transform ${dur || 2.0}s cubic-bezier(0.45,0.05,0.55,0.95)`;
       el.bodyPivot.style.animation = 'none';
       el.bodyPivot.style.transform = `rotate(${rot}deg) scaleX(${sx || 1})`;
     }
 
     function resetBodySwivel() {
+      if (!el.bodyPivot) return;
       el.bodyPivot.style.transition = '';
       el.bodyPivot.style.animation = '';
       el.bodyPivot.style.transform = '';
     }
 
     function setLid(amount, dur = 0.7) {
+      if (!el.lidTop || !el.lidBot) return;
       const topPx = amount * 11;
       const botPx = amount * 11;
       el.lidTop.style.transition = `transform ${dur}s ease-in-out`;
@@ -380,6 +381,7 @@ class GladosCard extends HTMLElement {
     }
 
     function setEyeColor(state) {
+      if (!el.eyeLayerIdle) return;
       el.eyeLayerIdle.style.opacity = (state === 'idle') ? '1' : '0';
       el.eyeLayerListen.style.opacity = (state === 'listening') ? '1' : '0';
       el.eyeLayerProcess.style.opacity = (state === 'processing') ? '1' : '0';
@@ -398,16 +400,6 @@ class GladosCard extends HTMLElement {
         el.eyeHalo.setAttribute('fill', '#ff2200');
         el.eyeCenter.setAttribute('fill', '#ffaaaa');
       }
-    }
-
-    function setLEDs(color, opacity) {
-      el.leds.forEach(l => { l.setAttribute('fill', color); l.setAttribute('opacity', opacity); });
-      [el.indL1, el.indL2, el.indR1, el.indR2].forEach(i => { i.setAttribute('fill', color); i.setAttribute('opacity', opacity); });
-    }
-
-    function setIndicator(color, opacity) {
-      el.indicatorDot.setAttribute('fill', color);
-      el.indicatorDot.setAttribute('opacity', opacity);
     }
 
     const TALK_MOVES = [
@@ -505,34 +497,28 @@ class GladosCard extends HTMLElement {
       stateNow = state;
       stopTalkAnim();
       stopLidBehavior();
-      el.dangerRing.setAttribute('opacity', '0');
-      el.eyeHalo.classList.remove('breathing');
+      if (el.dangerRing) el.dangerRing.setAttribute('opacity', '0');
+      if (el.eyeHalo) el.eyeHalo.classList.remove('breathing');
 
       if (state === 'idle') {
         setHead(0, 0, 0, 2.2); setBaseLid(0, 1.2); setPupil(0, 0);
-        el.eyeHalo.classList.add('breathing');
+        if (el.eyeHalo) el.eyeHalo.classList.add('breathing');
         setEyeColor('idle');
-        setIndicator('#ff2200', '.8');
-        setLEDs('#ffb800', '.15'); resetBodySwivel();
+        resetBodySwivel();
         startLidBehavior();
       } else if (state === 'listening') {
         setHead(4, 0, -8, 1.0); setBaseLid(0.1, 0.4); setPupil(0, -3);
         setEyeColor('listening');
-        setIndicator('#00ccff', '1');
-        setLEDs('#00ccff', '1');
         setBodySwivel(-2, 1, 1.4);
       } else if (state === 'processing') {
         setHead(-2, 0, 10, 1.4); setBaseLid(0.55, 0.5); setPupil(0, 4);
         setEyeColor('processing');
-        setIndicator('#ff6600', '1');
-        setLEDs('#ff6600', '.8'); setBodySwivel(1, 0.98, 1.8);
+        setBodySwivel(1, 0.98, 1.8);
         startLidBehavior();
       } else if (state === 'responding') {
         setHead(0, 0, -5, 0.5); setBaseLid(0.2, 0.3); setPupil(0, 0);
         setEyeColor('responding');
-        setIndicator('#ff2200', '1');
-        el.dangerRing.setAttribute('opacity', '1');
-        setLEDs('#ff2200', '1');
+        if (el.dangerRing) el.dangerRing.setAttribute('opacity', '1');
         setBodySwivel(0, 1, 0.8); startTalkAnim();
       }
     };
