@@ -12,6 +12,8 @@ class GladosCard extends HTMLElement {
   }
 
   set hass(hass) {
+    if (!hass) return;
+
     if (!this.contentReady) {
       this.setupDOM();
       this.initGlados();
@@ -308,7 +310,12 @@ class GladosCard extends HTMLElement {
       lidTop: root.getElementById('eye-lid'),
       lidBot: root.getElementById('eye-lid-bottom'),
       dangerRing: root.getElementById('danger-ring'),
-      indicatorDot: root.getElementById('indicator-dot')
+      indicatorDot: root.getElementById('indicator-dot'),
+      leds: root.querySelectorAll('.led-dot'),
+      indL1: root.getElementById('ind-l1'),
+      indL2: root.getElementById('ind-l2'),
+      indR1: root.getElementById('ind-r1'),
+      indR2: root.getElementById('ind-r2')
     };
 
     let stateNow = 'idle';
@@ -400,6 +407,25 @@ class GladosCard extends HTMLElement {
         el.eyeHalo.setAttribute('fill', '#ff2200');
         el.eyeCenter.setAttribute('fill', '#ffaaaa');
       }
+    }
+
+    function setLEDs(color, opacity) {
+      if (!el.leds) return;
+      el.leds.forEach(l => { l.setAttribute('fill', color); l.setAttribute('opacity', opacity); });
+      if (el.indL1) el.indL1.setAttribute('fill', color);
+      if (el.indL1) el.indL1.setAttribute('opacity', opacity);
+      if (el.indL2) el.indL2.setAttribute('fill', color);
+      if (el.indL2) el.indL2.setAttribute('opacity', opacity);
+      if (el.indR1) el.indR1.setAttribute('fill', color);
+      if (el.indR1) el.indR1.setAttribute('opacity', opacity);
+      if (el.indR2) el.indR2.setAttribute('fill', color);
+      if (el.indR2) el.indR2.setAttribute('opacity', opacity);
+    }
+
+    function setIndicator(color, opacity) {
+      if (!el.indicatorDot) return;
+      el.indicatorDot.setAttribute('fill', color);
+      el.indicatorDot.setAttribute('opacity', opacity);
     }
 
     const TALK_MOVES = [
@@ -504,20 +530,28 @@ class GladosCard extends HTMLElement {
         setHead(0, 0, 0, 2.2); setBaseLid(0, 1.2); setPupil(0, 0);
         if (el.eyeHalo) el.eyeHalo.classList.add('breathing');
         setEyeColor('idle');
+        setLEDs('#ffb800', '.15');
+        setIndicator('#ff2200', '.8');
         resetBodySwivel();
         startIdleCycle();
       } else if (state === 'listening') {
         setHead(4, 0, -8, 1.0); setBaseLid(0.1, 0.4); setPupil(0, -3);
         setEyeColor('listening');
+        setLEDs('#00ccff', '1');
+        setIndicator('#00ccff', '1');
         setBodySwivel(-2, 1, 1.4);
       } else if (state === 'processing') {
         setHead(-2, 0, 10, 1.4); setBaseLid(0.55, 0.5); setPupil(0, 4);
         setEyeColor('processing');
+        setLEDs('#ff6600', '.8');
+        setIndicator('#ff6600', '1');
         setBodySwivel(1, 0.98, 1.8);
         startLidBehavior();
       } else if (state === 'responding') {
         setHead(0, 0, -5, 0.5); setBaseLid(0.2, 0.3); setPupil(0, 0);
         setEyeColor('responding');
+        setLEDs('#ff2200', '1');
+        setIndicator('#ff2200', '1');
         if (el.dangerRing) el.dangerRing.setAttribute('opacity', '1');
         setBodySwivel(0, 1, 0.8); startTalkAnim();
       }
