@@ -225,10 +225,10 @@ class GladosCard extends HTMLElement {
             </linearGradient>
 
             <clipPath id="cavityClip">
-               <rect x="97" y="269" width="66" height="190" rx="33"/>
+               <rect x="97" y="283.25" width="66" height="161.5" rx="33"/>
             </clipPath>
             <clipPath id="trackClip">
-               <rect x="107" y="279" width="46" height="170" rx="23"/>
+               <rect x="107" y="293.25" width="46" height="141.5" rx="23"/>
             </clipPath>
             <clipPath id="eyeballClip">
                <circle cx="130" cy="364" r="25.5"/>
@@ -304,15 +304,15 @@ class GladosCard extends HTMLElement {
                 <rect x="75" y="232" width="130" height="247" rx="60" fill="url(#ceramicGrad)"/>
                 <rect x="75" y="232" width="130" height="247" rx="60" fill="url(#ceramicShadow)"/>
                 
-                <rect x="93" y="265" width="76" height="200" rx="38" fill="#000" opacity="0.6" filter="url(#softGlow)"/>
-                <rect x="91" y="263" width="78" height="202" rx="39" fill="url(#bezelGrad)" stroke="#1a1c22" stroke-width="1"/>
-                <rect x="93" y="265" width="74" height="198" rx="37" fill="none" stroke="#6a6d75" stroke-width="1.5"/>
+                <rect x="93" y="279.25" width="76" height="171.5" rx="38" fill="#000" opacity="0.6" filter="url(#softGlow)"/>
+                <rect x="91" y="277.25" width="78" height="173.5" rx="39" fill="url(#bezelGrad)" stroke="#1a1c22" stroke-width="1"/>
+                <rect x="93" y="279.25" width="74" height="169.5" rx="37" fill="none" stroke="#6a6d75" stroke-width="1.5"/>
 
                 <g clip-path="url(#cavityClip)">
-                   <rect x="97" y="269" width="66" height="190" rx="33" fill="url(#cavityGrad)"/>
-                   <rect x="97" y="269" width="66" height="190" rx="33" fill="none" stroke="#050607" stroke-width="5" opacity="0.9"/>
+                   <rect x="97" y="283.25" width="66" height="161.5" rx="33" fill="url(#cavityGrad)"/>
+                   <rect x="97" y="283.25" width="66" height="161.5" rx="33" fill="none" stroke="#050607" stroke-width="5" opacity="0.9"/>
                    
-                   <rect x="107" y="279" width="46" height="170" rx="23" fill="url(#trackGrad)" stroke="#000000" stroke-width="3"/>
+                   <rect x="107" y="293.25" width="46" height="141.5" rx="23" fill="url(#trackGrad)" stroke="#000000" stroke-width="3"/>
                    
                    <g clip-path="url(#trackClip)">
                       <g id="bellows" style="transition: transform 0.15s ease-out;">
@@ -350,7 +350,7 @@ class GladosCard extends HTMLElement {
                 <path d="M 92 359 L 97 361 L 97 367 L 92 369 Z" fill="#050505"/>
                 <path d="M 92 379 L 97 381 L 97 389 L 92 391 Z" fill="#050505"/>
                 
-                <rect id="danger-ring" x="97" y="269" width="66" height="190" rx="33" fill="none" stroke="#ff2200" stroke-width="2" opacity="0"/>
+                <rect id="danger-ring" x="97" y="283.25" width="66" height="161.5" rx="33" fill="none" stroke="#ff2200" stroke-width="2" opacity="0"/>
               </g>
             </g>
           </g>
@@ -459,7 +459,6 @@ class GladosCard extends HTMLElement {
       { name: 'bored', exec() { setHead(2, 0, 20, 0.96, 2.8); setBaseLid(0.7, 1.5); setBodySwivel(1, 1, 3.0); setTimeout(() => { if (stateNow === 'idle') setBaseLid(0, 1.5); }, 1500); }, min: 7000, max: 14000, weight: 1.5 },
       { name: 'full_swivel', exec() { setBodySwivel(-6, 0.96, 2.5); setTimeout(() => { setHead(6, 0, -3, 1.02, 1.2); setBaseLid(0, 0.8); }, 600); }, min: 4000, max: 8000, weight: 0.8 },
       { name: 'glitch', exec() {
-          // Optimization: Use RequestAnimationFrame
           let count = 0;
           let lastTime = 0;
           
