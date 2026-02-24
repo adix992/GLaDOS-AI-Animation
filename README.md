@@ -59,7 +59,7 @@ bpm_entity: sensor.universal_music_bpm
 respond_delay: 2.5
 zoom: 85
 Configuration VariablesNameTypeRequirementDescriptiontypestringRequiredMust be custom:glados-card.entitystringRequiredThe entity ID of your voice assistant satellite (e.g., assist_satellite...).media_entitystringOptionalThe entity ID of your media player. Triggers the dance state when playing.bpm_entitystringOptionalThe entity ID of the sensor providing the current song's BPM (requires SongBPM-26). Defaults to 120 if missing.respond_delaynumberOptionalNumber of seconds to wait before changing from Processing (Orange) to Responding (Red). Useful if your TTS has a slight delay. Default is 0.zoomnumberOptionalScale percentage of the SVG model inside the card. Default is 85.
-
+yaml
 
 ## Configuration Variables
 
