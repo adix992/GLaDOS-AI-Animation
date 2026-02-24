@@ -15,19 +15,22 @@ class GladosCard extends HTMLElement {
 
   static getStubConfig() {
     return {
-      entity: "assist_satellite.living_room",
+      entity: "",
       media_entity: "",
       bpm_entity: "",
       respond_delay: 0,
-      zoom: 85
+      zoom: 85,
+      transparent_bg: false
     };
   }
 
   setConfig(config) {
-    if (!config.entity) {
-      throw new Error('Please define an entity (e.g., assist_satellite.living_room) for GLaDOS to track.');
+    if (!config.entity && !this.config) {
+      // Create a gentle fallback so the editor can load even if empty
+      this.config = { ...config, entity: 'assist_satellite.example' };
+    } else {
+      this.config = config;
     }
-    this.config = config;
   }
 
   set hass(hass) {
@@ -43,8 +46,8 @@ class GladosCard extends HTMLElement {
     const mediaEntity = this.config.media_entity;
     const bpmEntity = this.config.bpm_entity;
 
-    // 1. HA Firehose Gatekeeper: Only parse if our tracked entities exist
-    const newVoiceState = hass.states[entity] ? hass.states[entity].state.toLowerCase() : 'idle';
+    // 1. HA Firehose Gatekeeper
+    const newVoiceState = (entity && hass.states[entity]) ? hass.states[entity].state.toLowerCase() : 'idle';
     const newMediaState = (mediaEntity && hass.states[mediaEntity]) ? hass.states[mediaEntity].state.toLowerCase() : 'paused';
     const newBpmState = (bpmEntity && hass.states[bpmEntity]) ? hass.states[bpmEntity].state : '120';
 
@@ -88,13 +91,17 @@ class GladosCard extends HTMLElement {
     const width = 280 * scale;
     const height = 320 * scale;
 
+    const bgStyle = this.config.transparent_bg 
+      ? 'background: transparent; box-shadow: none; border: none;' 
+      : 'background: var(--ha-card-background, var(--card-background-color, #1c1c1c));';
+
     this.shadowRoot.innerHTML = `
       <style>
         :host {
           display: flex;
           align-items: center;
           justify-content: center;
-          background: var(--ha-card-background, #000000);
+          ${bgStyle}
           border-radius: var(--ha-card-border-radius, 12px);
           overflow: hidden;
           width: 100%;
@@ -798,6 +805,7 @@ class GladosCard extends HTMLElement {
       else if (s.includes('process') || s.includes('think')) mapped = 'processing';
       else if (s === 'dancing') mapped = 'dancing';
 
+      // Abort delay if state changes mid-wait
       if (this.respondTimer) {
         clearTimeout(this.respondTimer);
         this.respondTimer = null;
@@ -805,12 +813,13 @@ class GladosCard extends HTMLElement {
 
       const delaySeconds = config.respond_delay !== undefined ? parseFloat(config.respond_delay) : 0;
 
+      // Apply Response Delay
       if (mapped === 'responding' && this._lastEffectiveState !== 'responding' && delaySeconds > 0) {
         this.respondTimer = setTimeout(() => {
           this._lastEffectiveState = 'responding';
           animateGlaDOS('responding', bpm);
         }, delaySeconds * 1000);
-        return; 
+        return; // Stay in current visual state while waiting
       }
 
       this._lastEffectiveState = mapped;
@@ -830,6 +839,9 @@ class GladosCard extends HTMLElement {
   }
 }
 
+// ==========================================
+// VISUAL EDITOR FOR HOME ASSISTANT UI
+// ==========================================
 class GladosCardEditor extends HTMLElement {
   constructor() {
     super();
@@ -843,21 +855,20 @@ class GladosCardEditor extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    // Update the hass object on all pickers immediately when it arrives
+    const pickers = this.shadowRoot.querySelectorAll('ha-entity-picker');
+    if (pickers.length > 0) {
+      pickers.forEach(picker => { picker.hass = hass; });
+    } else {
+      this.render();
+    }
   }
 
-  configChanged(ev) {
-    const target = ev.target;
-    if (!this._config || !target) return;
-
-    const configKey = target.getAttribute('data-config');
-    let value = target.value;
-    
-    if (target.type === 'number') {
-      value = Number(value);
-    }
+  configChanged(configKey, value) {
+    if (!this._config) return;
 
     const newConfig = { ...this._config };
-    if (value === '' && target.type !== 'number') {
+    if (value === '' || value === undefined || value === null) {
        delete newConfig[configKey];
     } else {
        newConfig[configKey] = value;
@@ -873,49 +884,131 @@ class GladosCardEditor extends HTMLElement {
   }
 
   render() {
-    if (!this._config) return;
+    if (!this._config || !this._hass) return;
 
     this.shadowRoot.innerHTML = `
       <style>
-        .container { display: flex; flex-direction: column; gap: 16px; padding: 16px 0; }
-        .field { display: flex; flex-direction: column; }
-        label { font-size: 13px; color: var(--secondary-text-color, #888); margin-bottom: 6px; }
-        input { padding: 10px; border: 1px solid var(--divider-color, #555); border-radius: 4px; background: var(--card-background-color, #1c1c1c); color: var(--primary-text-color, #fff); }
+        .card-config {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+        .side-by-side {
+          display: flex;
+          gap: 16px;
+          margin-top: 8px;
+        }
+        .side-by-side > div {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+        }
+        label {
+          font-family: var(--paper-font-body1_-_font-family, sans-serif);
+          font-size: 14px;
+          color: var(--primary-text-color);
+        }
+        .secondary {
+          font-size: 12px;
+          color: var(--secondary-text-color);
+          margin-top: 2px;
+        }
       </style>
-      <div class="container">
-        <div class="field">
-          <label>Voice Assistant Entity (Required)</label>
-          <input type="text" data-config="entity" placeholder="assist_satellite.living_room" value="${this._config.entity || ''}">
+      <div class="card-config">
+        <ha-entity-picker
+          id="entity-picker"
+          label="Voice Assistant Entity (Required)"
+          allow-custom-entity
+        ></ha-entity-picker>
+
+        <ha-entity-picker
+          id="media-picker"
+          label="Media Player Entity (Optional)"
+          allow-custom-entity
+        ></ha-entity-picker>
+
+        <ha-entity-picker
+          id="bpm-picker"
+          label="BPM Sensor Entity (Optional)"
+          allow-custom-entity
+        ></ha-entity-picker>
+
+        <div class="side-by-side">
+          <div>
+             <label>Response Delay: <span id="delay-val">${this._config.respond_delay !== undefined ? this._config.respond_delay : 0}</span>s</label>
+             <div class="secondary">Time before she starts talking.</div>
+             <ha-slider
+               id="delay-slider"
+               min="0" max="16" step="0.5"
+               pin
+               value="${this._config.respond_delay !== undefined ? this._config.respond_delay : 0}"
+             ></ha-slider>
+          </div>
+          <div>
+             <label>Zoom Scale: <span id="zoom-val">${this._config.zoom !== undefined ? this._config.zoom : 85}</span>%</label>
+             <ha-slider
+               id="zoom-slider"
+               min="10" max="200" step="1"
+               pin
+               value="${this._config.zoom !== undefined ? this._config.zoom : 85}"
+             ></ha-slider>
+          </div>
         </div>
-        <div class="field">
-          <label>Media Player Entity (Optional, for dancing)</label>
-          <input type="text" data-config="media_entity" placeholder="media_player.spotify" value="${this._config.media_entity || ''}">
-        </div>
-        <div class="field">
-          <label>BPM Sensor Entity (Optional, to sync dancing)</label>
-          <input type="text" data-config="bpm_entity" placeholder="sensor.bpm" value="${this._config.bpm_entity || ''}">
-        </div>
-        <div class="field">
-          <label>Response Delay (Seconds before she talks)</label>
-          <input type="number" step="0.5" min="0" max="16" data-config="respond_delay" value="${this._config.respond_delay !== undefined ? this._config.respond_delay : 0}">
-        </div>
-        <div class="field">
-          <label>Zoom Scale (%)</label>
-          <input type="number" step="1" min="10" max="200" data-config="zoom" value="${this._config.zoom !== undefined ? this._config.zoom : 85}">
-        </div>
+
+        <ha-formfield label="Transparent Background">
+          <ha-switch id="bg-switch"></ha-switch>
+        </ha-formfield>
       </div>
     `;
 
-    const inputs = this.shadowRoot.querySelectorAll('input');
-    inputs.forEach(input => {
-      input.addEventListener('input', this.configChanged.bind(this));
+    // Initialize Native Pickers with proper domain filtering
+    const entityPicker = this.shadowRoot.querySelector('#entity-picker');
+    entityPicker.hass = this._hass;
+    entityPicker.value = this._config.entity;
+    entityPicker.includeDomains = ['assist_satellite'];
+    entityPicker.addEventListener('value-changed', (ev) => this.configChanged('entity', ev.detail.value));
+
+    const mediaPicker = this.shadowRoot.querySelector('#media-picker');
+    mediaPicker.hass = this._hass;
+    mediaPicker.value = this._config.media_entity;
+    mediaPicker.includeDomains = ['media_player'];
+    mediaPicker.addEventListener('value-changed', (ev) => this.configChanged('media_entity', ev.detail.value));
+
+    const bpmPicker = this.shadowRoot.querySelector('#bpm-picker');
+    bpmPicker.hass = this._hass;
+    bpmPicker.value = this._config.bpm_entity;
+    bpmPicker.includeDomains = ['sensor'];
+    bpmPicker.addEventListener('value-changed', (ev) => this.configChanged('bpm_entity', ev.detail.value));
+
+    // Initialize Native Sliders
+    const delaySlider = this.shadowRoot.querySelector('#delay-slider');
+    const delayVal = this.shadowRoot.querySelector('#delay-val');
+    delaySlider.addEventListener('change', (ev) => {
+      delayVal.innerText = ev.target.value;
+      this.configChanged('respond_delay', Number(ev.target.value));
+    });
+
+    const zoomSlider = this.shadowRoot.querySelector('#zoom-slider');
+    const zoomVal = this.shadowRoot.querySelector('#zoom-val');
+    zoomSlider.addEventListener('change', (ev) => {
+      zoomVal.innerText = ev.target.value;
+      this.configChanged('zoom', Number(ev.target.value));
+    });
+
+    // Initialize Native Toggle Switch
+    const bgSwitch = this.shadowRoot.querySelector('#bg-switch');
+    bgSwitch.checked = this._config.transparent_bg === true;
+    bgSwitch.addEventListener('change', (ev) => {
+      this.configChanged('transparent_bg', ev.target.checked);
     });
   }
 }
 
+// Register both custom elements
 customElements.define('glados-card-editor', GladosCardEditor);
 customElements.define('glados-card', GladosCard);
 
+// Add to Home Assistant visual card picker
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: 'glados-card',
