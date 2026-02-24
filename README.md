@@ -61,4 +61,23 @@ zoom: 85
 Configuration VariablesNameTypeRequirementDescriptiontypestringRequiredMust be custom:glados-card.entitystringRequiredThe entity ID of your voice assistant satellite (e.g., assist_satellite...).media_entitystringOptionalThe entity ID of your media player. Triggers the dance state when playing.bpm_entitystringOptionalThe entity ID of the sensor providing the current song's BPM (requires SongBPM-26). Defaults to 120 if missing.respond_delaynumberOptionalNumber of seconds to wait before changing from Processing (Orange) to Responding (Red). Useful if your TTS has a slight delay. Default is 0.zoomnumberOptionalScale percentage of the SVG model inside the card. Default is 85.
 
 
-Configuration VariablesNameTypeRequirementDescriptiontypestringRequiredMust be custom:glados-card.entitystringRequiredThe entity ID of your voice assistant satellite (e.g., assist_satellite...).media_entitystringOptionalThe entity ID of your media player. Triggers the dance state when playing.bpm_entitystringOptionalThe entity ID of the sensor providing the current song's BPM (requires SongBPM-26). Defaults to 120 if missing.respond_delaynumberOptionalNumber of seconds to wait before changing from Processing (Orange) to Responding (Red). Useful if your TTS has a slight delay. Default is 0.zoomnumberOptionalScale percentage of the SVG model inside the card. Default is 85.🛠️ Tech Stack & OptimizationThis card is completely self-contained. It uses no external image files (everything is dynamically drawn via inline SVG), and all lighting blooms, shadows, and metallic reflections are calculated natively by the browser's SVG rendering engine.Performance Notes:Zero-Drift Sync: Uses performance.now() high-resolution timestamps to ensure dance moves stay locked to the beat during long playback sessions.Firehose Gatekeeping: Implements state-caching to ensure the card only recalculates animations when your tracked entities change, ignoring irrelevant Home Assistant state traffic.Resource Management: Automatically destroys all active timers and animation loops when the card is removed from the DOM to prevent memory leaks.
+## Configuration Variables
+
+| Name | Type | Requirement | Description |
+| :--- | :--- | :--- | :--- |
+| `type` | string | **Required** | Must be `custom:glados-card`. |
+| `entity` | string | **Required** | The entity ID of your voice assistant satellite (e.g., `assist_satellite...`). |
+| `media_entity` | string | Optional | The entity ID of your media player. Triggers the dance state when `playing`. |
+| `bpm_entity` | string | Optional | The entity ID of the sensor providing the current song's BPM (requires [SongBPM-26](https://github.com/adix992/SongBPM-26)). Defaults to 120 if missing. |
+| `respond_delay` | number | Optional | Number of seconds to wait before changing from Processing (Orange) to Responding (Red). Useful if your TTS has a slight delay. Default is `0`. |
+| `zoom` | number | Optional | Scale percentage of the SVG model inside the card. Default is `85`. |
+
+## 🛠️ Tech Stack & Optimization
+
+This card is completely self-contained. It uses no external image files (everything is dynamically drawn via inline SVG), and all lighting blooms, shadows, and metallic reflections are calculated natively by the browser's SVG rendering engine.
+
+### Performance Notes:
+
+* **Zero-Drift Sync:** Uses `performance.now()` high-resolution timestamps to ensure dance moves stay locked to the beat during long playback sessions.
+* **Firehose Gatekeeping:** Implements state-caching to ensure the card only recalculates animations when your tracked entities change, ignoring irrelevant Home Assistant state traffic.
+* **Resource Management:** Automatically destroys all active timers and animation loops when the card is removed from the DOM to prevent memory leaks.
