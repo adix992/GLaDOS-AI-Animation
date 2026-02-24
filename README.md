@@ -1,4 +1,4 @@
-# GLaDOS Lovelace Card for Home Assistant
+# GLaDOS AI Animation Card for Home Assistant
 
 <img width="954" height="439" alt="image" src="https://github.com/user-attachments/assets/8cf8be88-e375-46d2-9fb8-7db2061b308c" />
 
@@ -18,7 +18,7 @@ She tracks your voice assistant's state in real-time, features a randomized idle
 
 When your configured media player starts playing, GLaDOS enters a dedicated **Spotify Green** dance mode. 
 
-Instead of a basic looped animation, she features a **Macro-Choreography Math Engine** that actively reads the tempo of your music and chains together **32 unique, tempo-locked dance routines**. Every 16 beats, she randomly switches her dance style so the animation stays fresh throughout a 4-minute song.
+Instead of a basic looped animation, she features a **Macro-Choreography Math Engine** that actively reads the tempo of your music and chains together **32 unique, tempo-locked dance routines**. Every 16 beats, she randomly switches her dance style so the animation stays fresh throughout a full song.
 
 Her personality shifts depending on the speed of the music:
 * **Chill & Soulful (< 90 BPM):** Fluid, heavily relaxed movements. Half-note vertical nods, wide figure-8 sweeps, and heavy eyelids.
@@ -57,9 +57,8 @@ entity: assist_satellite.living_room
 media_entity: media_player.spotify
 bpm_entity: sensor.universal_music_bpm
 respond_delay: 2.5
-zoom: 85
-Configuration VariablesNameTypeRequirementDescriptiontypestringRequiredMust be custom:glados-card.entitystringRequiredThe entity ID of your voice assistant satellite (e.g., assist_satellite...).media_entitystringOptionalThe entity ID of your media player. Triggers the dance state when playing.bpm_entitystringOptionalThe entity ID of the sensor providing the current song's BPM (requires SongBPM-26). Defaults to 120 if missing.respond_delaynumberOptionalNumber of seconds to wait before changing from Processing (Orange) to Responding (Red). Useful if your TTS has a slight delay. Default is 0.zoomnumberOptionalScale percentage of the SVG model inside the card. Default is 85.
-yaml
+zoom: 85 # Scale percentage of the SVG model inside the card. Default is 85.
+```
 
 ## Configuration Variables
 
