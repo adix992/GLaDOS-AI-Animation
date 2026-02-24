@@ -2,6 +2,25 @@ class GladosCard extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
+    
+    // Internal state cache for HA firehose optimization
+    this._lastHassVoice = null;
+    this._lastHassMedia = null;
+    this._lastHassBpm = null;
+  }
+
+  static getConfigElement() {
+    return document.createElement('glados-card-editor');
+  }
+
+  static getStubConfig() {
+    return {
+      entity: "assist_satellite.living_room",
+      media_entity: "",
+      bpm_entity: "",
+      respond_delay: 0,
+      zoom: 85
+    };
   }
 
   setConfig(config) {
@@ -20,24 +39,37 @@ class GladosCard extends HTMLElement {
       this.contentReady = true;
     }
 
-    const voiceObj = hass.states[this.config.entity];
-    const mediaObj = this.config.media_entity ? hass.states[this.config.media_entity] : null;
-    const bpmObj = this.config.bpm_entity ? hass.states[this.config.bpm_entity] : null;
+    const entity = this.config.entity;
+    const mediaEntity = this.config.media_entity;
+    const bpmEntity = this.config.bpm_entity;
 
-    const voiceState = voiceObj ? voiceObj.state.toLowerCase() : 'idle';
-    const mediaState = mediaObj ? mediaObj.state.toLowerCase() : 'paused';
-    const bpmRaw = bpmObj ? parseFloat(bpmObj.state) : 120;
+    // 1. HA Firehose Gatekeeper: Only parse if our tracked entities exist
+    const newVoiceState = hass.states[entity] ? hass.states[entity].state.toLowerCase() : 'idle';
+    const newMediaState = (mediaEntity && hass.states[mediaEntity]) ? hass.states[mediaEntity].state.toLowerCase() : 'paused';
+    const newBpmState = (bpmEntity && hass.states[bpmEntity]) ? hass.states[bpmEntity].state : '120';
+
+    // 2. Abort immediately if nothing relevant changed
+    if (this._lastHassVoice === newVoiceState && 
+        this._lastHassMedia === newMediaState && 
+        this._lastHassBpm === newBpmState) {
+        return;
+    }
+
+    this._lastHassVoice = newVoiceState;
+    this._lastHassMedia = newMediaState;
+    this._lastHassBpm = newBpmState;
+
+    // 3. Process the changes
+    const bpmRaw = parseFloat(newBpmState);
     const currentBpm = isNaN(bpmRaw) ? 120 : bpmRaw; 
 
-    // State Hierarchy
     let effectiveState = 'idle';
-    if (['listen', 'wake', 'process', 'think', 'respond', 'speak', 'tts'].some(s => voiceState.includes(s))) {
-      effectiveState = voiceState; 
-    } else if (mediaState === 'playing') {
+    if (['listen', 'wake', 'process', 'think', 'respond', 'speak', 'tts'].some(s => newVoiceState.includes(s))) {
+      effectiveState = newVoiceState; 
+    } else if (newMediaState === 'playing') {
       effectiveState = 'dancing';
     }
 
-    // Trigger update if state or BPM changed
     if (this._currentState !== effectiveState || (effectiveState === 'dancing' && this._currentBpm !== currentBpm)) {
       this._currentState = effectiveState;
       this._currentBpm = currentBpm;
@@ -62,7 +94,7 @@ class GladosCard extends HTMLElement {
           display: flex;
           align-items: center;
           justify-content: center;
-          background: #000000;
+          background: var(--ha-card-background, #000000);
           border-radius: var(--ha-card-border-radius, 12px);
           overflow: hidden;
           width: 100%;
@@ -399,9 +431,7 @@ class GladosCard extends HTMLElement {
       ledMatrices: root.querySelectorAll('.led-matrix')
     };
 
-    let stateNow = 'idle', talkPhase = 0, talkAnim = null, lidTimer = null;
-    let pupilTimer = null, idleTimer = null, glitchRaf = null;
-    let danceTimer = null, danceLedTimer = null, dancePhase = 0;
+    let stateNow = 'idle';
     let currentBaseLid = 0;
 
     function setHead(rot, tx, ty, scale = 1.0, dur, ease = "cubic-bezier(0.34,1.06,0.64,1)") {
@@ -439,25 +469,38 @@ class GladosCard extends HTMLElement {
       el.svg.style.setProperty('--led-color', color);
       el.svg.style.setProperty('--led-opacity', opacity);
     }
-    function startLidBehavior() {
-      if (lidTimer) clearTimeout(lidTimer);
-      function loop() {
+
+    // --- Timers exposed to 'this' for Garbage Collection ---
+    this.lidTimer = null;
+    this.idleTimer = null;
+    this.pupilTimer = null;
+    this.glitchRaf = null;
+    this.danceTimer = null;
+    this.danceLedTimer = null;
+    this.talkAnim = null;
+    this.respondTimer = null;
+
+    const startLidBehavior = () => {
+      if (this.lidTimer) clearTimeout(this.lidTimer);
+      const loop = () => {
         if (stateNow === 'idle') {
           let val = Math.max(0, Math.min(1, currentBaseLid + (Math.random() - 0.5) * 0.15));
           setLid(val, 0.5 + Math.random() * 0.8);
-          lidTimer = setTimeout(loop, 1500 + Math.random() * 2500);
+          this.lidTimer = setTimeout(loop, 1500 + Math.random() * 2500);
         } else if (stateNow === 'processing') {
           let val = 0.5 + (Math.random() * 0.35); 
           setLid(val, 0.04 + Math.random() * 0.08);
-          lidTimer = setTimeout(loop, 40 + Math.random() * 120);
+          this.lidTimer = setTimeout(loop, 40 + Math.random() * 120);
         }
-      }
+      };
       loop();
-    }
-    function stopLidBehavior() {
-      if (lidTimer) { clearTimeout(lidTimer); lidTimer = null; }
-    }
+    };
 
+    const stopLidBehavior = () => {
+      if (this.lidTimer) { clearTimeout(this.lidTimer); this.lidTimer = null; }
+    };
+
+    // --- Idle Logic ---
     const IDLE_BEHAVIORS = [
       { name: 'passive', exec() { setHead(0, 0, 0, 1.0, 2.4); setBaseLid(0, 1.0); resetBodySwivel(); }, min: 6000, max: 13000, weight: 4 },
       { name: 'scan_right', exec() { setHead(12, 0, -5, 0.98, 1.4); setBaseLid(0, 1.0); setBodySwivel(-2, 1, 1.8); }, min: 3500, max: 7000, weight: 1.5 },
@@ -467,15 +510,15 @@ class GladosCard extends HTMLElement {
       { name: 'alert', exec() { setHead(0, 0, -25, 1.08, 0.28); setBaseLid(0, 0.2); setBodySwivel(-1, 1, 0.4); }, min: 1500, max: 3000, weight: 1 },
       { name: 'bored', exec() { setHead(2, 0, 20, 0.96, 2.8); setBaseLid(0.7, 1.5); setBodySwivel(1, 1, 3.0); setTimeout(() => { if (stateNow === 'idle') setBaseLid(0, 1.5); }, 1500); }, min: 7000, max: 14000, weight: 1.5 },
       { name: 'full_swivel', exec() { setBodySwivel(-6, 0.96, 2.5); setTimeout(() => { setHead(6, 0, -3, 1.02, 1.2); setBaseLid(0, 0.8); }, 600); }, min: 4000, max: 8000, weight: 0.8 },
-      { name: 'glitch', exec() {
+      { name: 'glitch', exec: () => {
           let count = 0, lastTime = 0;
-          if (glitchRaf) cancelAnimationFrame(glitchRaf);
-          function glitchLoop(timestamp) {
+          if (this.glitchRaf) cancelAnimationFrame(this.glitchRaf);
+          const glitchLoop = (timestamp) => {
             if (!lastTime) lastTime = timestamp;
             if (timestamp - lastTime > 60) {
               lastTime = timestamp;
               if (stateNow !== 'idle' || count > 12) {
-                cancelAnimationFrame(glitchRaf); glitchRaf = null;
+                cancelAnimationFrame(this.glitchRaf); this.glitchRaf = null;
                 if (stateNow === 'idle') {
                   el.eyeHalo.setAttribute('fill', '#330800'); el.eyeCenter.setAttribute('fill', '#ffcc00'); setHead(0, 0, 0, 1.0, 0.4);
                 }
@@ -486,59 +529,61 @@ class GladosCard extends HTMLElement {
               else { el.eyeHalo.setAttribute('fill', '#ffb800'); el.eyeCenter.setAttribute('fill', '#ffffff'); }
               count++;
             }
-            glitchRaf = requestAnimationFrame(glitchLoop);
-          }
-          glitchRaf = requestAnimationFrame(glitchLoop);
+            this.glitchRaf = requestAnimationFrame(glitchLoop);
+          };
+          this.glitchRaf = requestAnimationFrame(glitchLoop);
       }, min: 4000, max: 7000, weight: 0.3 }
     ];
 
-    function dartPupil() {
+    const dartPupil = () => {
       if (stateNow === 'idle') {
         const max = 7;
         setPupil((Math.random() - 0.5) * max * 2, (Math.random() - 0.5) * max * 2);
-        pupilTimer = setTimeout(dartPupil, 600 + Math.random() * 2500);
+        this.pupilTimer = setTimeout(dartPupil, 600 + Math.random() * 2500);
       }
-    }
+    };
 
-    function runNextIdleBehavior() {
+    const runNextIdleBehavior = () => {
       if (stateNow !== 'idle') return;
       let r = Math.random() * IDLE_BEHAVIORS.reduce((s, b) => s + b.weight, 0), chosen = IDLE_BEHAVIORS[0];
       for (const b of IDLE_BEHAVIORS) { r -= b.weight; if (r <= 0) { chosen = b; break; } }
       chosen.exec();
-      idleTimer = setTimeout(runNextIdleBehavior, chosen.min + Math.random() * (chosen.max - chosen.min));
-    }
+      this.idleTimer = setTimeout(runNextIdleBehavior, chosen.min + Math.random() * (chosen.max - chosen.min));
+    };
 
     this.startIdleCycle = () => {
       this.stopIdleCycle();
       dartPupil();
-      idleTimer = setTimeout(runNextIdleBehavior, 2000 + Math.random() * 3000);
+      this.idleTimer = setTimeout(runNextIdleBehavior, 2000 + Math.random() * 3000);
     };
 
     this.stopIdleCycle = () => {
-      if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
-      if (pupilTimer) { clearTimeout(pupilTimer); pupilTimer = null; }
-      if (glitchRaf) { cancelAnimationFrame(glitchRaf); glitchRaf = null; }
+      if (this.idleTimer) { clearTimeout(this.idleTimer); this.idleTimer = null; }
+      if (this.pupilTimer) { clearTimeout(this.pupilTimer); this.pupilTimer = null; }
+      if (this.glitchRaf) { cancelAnimationFrame(this.glitchRaf); this.glitchRaf = null; }
     };
 
     // --- 32-ROUTINE RANDOMIZED DANCE LOGIC ---
     this.stopDanceCycle = () => {
-      if (danceTimer) { clearTimeout(danceTimer); danceTimer = null; }
-      if (danceLedTimer) { clearTimeout(danceLedTimer); danceLedTimer = null; }
+      if (this.danceTimer) { clearTimeout(this.danceTimer); this.danceTimer = null; }
+      if (this.danceLedTimer) { clearTimeout(this.danceLedTimer); this.danceLedTimer = null; }
     };
 
     this.startDanceCycle = (bpm) => {
       this.stopDanceCycle();
-      dancePhase = 0; 
+      let dancePhase = 0; 
       let currentRoutine = Math.floor(Math.random() * 8);
       
+      const currentBpm = Math.max(60, Math.min(200, bpm)); 
+      const beatMs = (60 / currentBpm) * 1000;
+      const beatSec = beatMs / 1000;
+      
+      // OPTIMIZATION: Track perfect delta time to prevent audio drift
+      let expectedNextTick = performance.now() + beatMs;
+
       const step = () => {
         if (stateNow !== 'dancing') return;
-        
-        const currentBpm = Math.max(60, Math.min(200, bpm)); 
-        const beatSec = 60 / currentBpm; 
-        const beatMs = beatSec * 1000;
 
-        // Ensure we pick a new block every 16 beats
         if (dancePhase > 0 && dancePhase % 16 === 0) {
             let nextRoutine;
             do { nextRoutine = Math.floor(Math.random() * 8); } while (nextRoutine === currentRoutine);
@@ -553,12 +598,11 @@ class GladosCard extends HTMLElement {
         let dirX = isDownBeat ? 1 : -1;
 
         setLEDs('#1DB954', '1'); 
-        const maxGlow = (choreoBlock === 7) ? '0.8' : '0.5'; 
-        el.eyeHalo.style.opacity = maxGlow; 
+        el.eyeHalo.style.opacity = (choreoBlock === 7) ? '0.8' : '0.5'; 
         el.eyeCenter.style.transform = 'scale(1.2)';
 
-        if (danceLedTimer) clearTimeout(danceLedTimer);
-        danceLedTimer = setTimeout(() => {
+        if (this.danceLedTimer) clearTimeout(this.danceLedTimer);
+        this.danceLedTimer = setTimeout(() => {
           if (stateNow === 'dancing') {
             setLEDs('#1DB954', '0.15'); 
             el.eyeHalo.style.opacity = '0.05'; 
@@ -580,7 +624,7 @@ class GladosCard extends HTMLElement {
            else if (choreoBlock === 5) { r = isQuadBeat ? 4 : -4; tx = 0; ty = isQuadBeat ? 12 : 2; s = isQuadBeat ? 1.03 : 1.0; }
            else if (choreoBlock === 6) { r = (phaseMod8 === 0) ? 12 : (phaseMod8 === 4) ? -6 : 0; tx = r * 0.5; ty = 8; }
            else { r = 0; tx = 0; ty = 2; s = 1.05; lid = 0.5 + Math.sin(dancePhase * Math.PI / 2) * 0.3; }
-           if (!isDownBeat) return executeTick(beatMs); 
+           if (!isDownBeat) return executeTick(); 
 
         } else if (currentBpm < 125) {
            moveDur = beatSec * 0.8; ease = "cubic-bezier(0.34, 1.06, 0.64, 1)"; lid = 0.2;
@@ -622,11 +666,15 @@ class GladosCard extends HTMLElement {
         setBodySwivel(r * -0.8, 1, bodyDur);
         setBaseLid(lid, beatSec * 0.5);
 
-        function executeTick(delay) {
+        // Advance logic and dynamically correct timer for zero drift
+        const executeTick = () => {
           dancePhase++;
-          danceTimer = setTimeout(step, delay);
-        }
-        executeTick(beatMs);
+          const now = performance.now();
+          expectedNextTick += beatMs;
+          const delay = Math.max(0, expectedNextTick - now);
+          this.danceTimer = setTimeout(step, delay);
+        };
+        executeTick();
       };
       
       step();
@@ -644,24 +692,24 @@ class GladosCard extends HTMLElement {
       { r: 6, tx: 3, ty: -6, s: 1.0, dur: 1.5, lid: 0.2, px: 0, py: 0 },
     ];
 
-    function startTalkAnim() {
-      if (talkAnim) clearTimeout(talkAnim);
-      talkPhase = 0;
-      function step() {
+    const startTalkAnim = () => {
+      if (this.talkAnim) clearTimeout(this.talkAnim);
+      let talkPhase = 0;
+      const step = () => {
         const m = TALK_MOVES[talkPhase % TALK_MOVES.length];
         setHead(m.r, m.tx, m.ty, m.s, m.dur, "ease-in-out");
         setLid(m.lid, m.dur);
         setPupil(m.px, m.py);
         setBodySwivel(m.r * -0.6, 1, m.dur); 
         talkPhase++;
-        talkAnim = setTimeout(step, m.dur * 1000);
-      }
+        this.talkAnim = setTimeout(step, m.dur * 1000);
+      };
       step();
-    }
+    };
 
     const animateGlaDOS = (state, bpm) => {
       stateNow = state;
-      if (talkAnim) clearTimeout(talkAnim);
+      if (this.talkAnim) clearTimeout(this.talkAnim);
       stopLidBehavior();
       this.stopIdleCycle();
       this.stopDanceCycle();
@@ -669,7 +717,6 @@ class GladosCard extends HTMLElement {
       el.ledMatrices.forEach(m => m.classList.remove('pulsing'));
       el.dangerRing.setAttribute('opacity', '0');
 
-      // Reset base eye state and layers
       el.eyeLayerIdle.style.opacity = '0'; 
       el.eyeLayerListen.style.opacity = '0'; 
       el.eyeLayerProcess.style.opacity = '0'; 
@@ -726,7 +773,7 @@ class GladosCard extends HTMLElement {
         const dart = () => {
           if (stateNow !== 'processing') return;
           setPupil((Math.random() - 0.5) * 12, 4);
-          pupilTimer = setTimeout(dart, 200 + Math.random() * 600);
+          this.pupilTimer = setTimeout(dart, 200 + Math.random() * 600);
         };
         dart();
         
@@ -751,7 +798,6 @@ class GladosCard extends HTMLElement {
       else if (s.includes('process') || s.includes('think')) mapped = 'processing';
       else if (s === 'dancing') mapped = 'dancing';
 
-      // Abort delay if state changes mid-wait
       if (this.respondTimer) {
         clearTimeout(this.respondTimer);
         this.respondTimer = null;
@@ -759,13 +805,12 @@ class GladosCard extends HTMLElement {
 
       const delaySeconds = config.respond_delay !== undefined ? parseFloat(config.respond_delay) : 0;
 
-      // Apply Response Delay
       if (mapped === 'responding' && this._lastEffectiveState !== 'responding' && delaySeconds > 0) {
         this.respondTimer = setTimeout(() => {
           this._lastEffectiveState = 'responding';
           animateGlaDOS('responding', bpm);
         }, delaySeconds * 1000);
-        return; // Stay in current visual state while waiting
+        return; 
       }
 
       this._lastEffectiveState = mapped;
@@ -775,11 +820,106 @@ class GladosCard extends HTMLElement {
     this.applyState('idle', 120);
   }
 
+  // Plugs all memory leaks if Home Assistant hides/removes the card
   disconnectedCallback() {
     if (this.stopIdleCycle) this.stopIdleCycle();
     if (this.stopDanceCycle) this.stopDanceCycle();
     if (this.respondTimer) clearTimeout(this.respondTimer);
+    if (this.lidTimer) clearTimeout(this.lidTimer);
+    if (this.talkAnim) clearTimeout(this.talkAnim);
   }
 }
 
+class GladosCardEditor extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+  }
+
+  setConfig(config) {
+    this._config = config;
+    this.render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+  }
+
+  configChanged(ev) {
+    const target = ev.target;
+    if (!this._config || !target) return;
+
+    const configKey = target.getAttribute('data-config');
+    let value = target.value;
+    
+    if (target.type === 'number') {
+      value = Number(value);
+    }
+
+    const newConfig = { ...this._config };
+    if (value === '' && target.type !== 'number') {
+       delete newConfig[configKey];
+    } else {
+       newConfig[configKey] = value;
+    }
+
+    this._config = newConfig;
+
+    this.dispatchEvent(new CustomEvent('config-changed', {
+      detail: { config: this._config },
+      bubbles: true,
+      composed: true,
+    }));
+  }
+
+  render() {
+    if (!this._config) return;
+
+    this.shadowRoot.innerHTML = `
+      <style>
+        .container { display: flex; flex-direction: column; gap: 16px; padding: 16px 0; }
+        .field { display: flex; flex-direction: column; }
+        label { font-size: 13px; color: var(--secondary-text-color, #888); margin-bottom: 6px; }
+        input { padding: 10px; border: 1px solid var(--divider-color, #555); border-radius: 4px; background: var(--card-background-color, #1c1c1c); color: var(--primary-text-color, #fff); }
+      </style>
+      <div class="container">
+        <div class="field">
+          <label>Voice Assistant Entity (Required)</label>
+          <input type="text" data-config="entity" placeholder="assist_satellite.living_room" value="${this._config.entity || ''}">
+        </div>
+        <div class="field">
+          <label>Media Player Entity (Optional, for dancing)</label>
+          <input type="text" data-config="media_entity" placeholder="media_player.spotify" value="${this._config.media_entity || ''}">
+        </div>
+        <div class="field">
+          <label>BPM Sensor Entity (Optional, to sync dancing)</label>
+          <input type="text" data-config="bpm_entity" placeholder="sensor.bpm" value="${this._config.bpm_entity || ''}">
+        </div>
+        <div class="field">
+          <label>Response Delay (Seconds before she talks)</label>
+          <input type="number" step="0.5" min="0" max="16" data-config="respond_delay" value="${this._config.respond_delay !== undefined ? this._config.respond_delay : 0}">
+        </div>
+        <div class="field">
+          <label>Zoom Scale (%)</label>
+          <input type="number" step="1" min="10" max="200" data-config="zoom" value="${this._config.zoom !== undefined ? this._config.zoom : 85}">
+        </div>
+      </div>
+    `;
+
+    const inputs = this.shadowRoot.querySelectorAll('input');
+    inputs.forEach(input => {
+      input.addEventListener('input', this.configChanged.bind(this));
+    });
+  }
+}
+
+customElements.define('glados-card-editor', GladosCardEditor);
 customElements.define('glados-card', GladosCard);
+
+window.customCards = window.customCards || [];
+window.customCards.push({
+  type: 'glados-card',
+  name: 'GLaDOS Custom Card',
+  preview: true,
+  description: 'A responsive, animated GLaDOS AI assistant card that reacts to voice and dances to music.'
+});
