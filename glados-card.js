@@ -4,7 +4,6 @@ class GladosCard extends HTMLElement {
     this.attachShadow({ mode: 'open' });
   }
 
-  // Lovelace calls this to pass the configuration
   setConfig(config) {
     if (!config.entity) {
       throw new Error('Please define an entity (e.g., assist_satellite.living_room) for GLaDOS to track.');
@@ -12,7 +11,6 @@ class GladosCard extends HTMLElement {
     this.config = config;
   }
 
-  // Lovelace calls this whenever any state changes in Home Assistant
   set hass(hass) {
     if (!hass) return;
 
@@ -22,14 +20,28 @@ class GladosCard extends HTMLElement {
       this.contentReady = true;
     }
 
-    const stateObj = hass.states[this.config.entity];
-    if (stateObj) {
-      const stateStr = stateObj.state;
-      // Only trigger animation updates if the state actually changed
-      if (this._currentState !== stateStr) {
-        this._currentState = stateStr;
-        if (this.applyState) this.applyState(stateStr);
-      }
+    const voiceObj = hass.states[this.config.entity];
+    const mediaObj = this.config.media_entity ? hass.states[this.config.media_entity] : null;
+    const bpmObj = this.config.bpm_entity ? hass.states[this.config.bpm_entity] : null;
+
+    const voiceState = voiceObj ? voiceObj.state.toLowerCase() : 'idle';
+    const mediaState = mediaObj ? mediaObj.state.toLowerCase() : 'paused';
+    const bpmRaw = bpmObj ? parseFloat(bpmObj.state) : 120;
+    const currentBpm = isNaN(bpmRaw) ? 120 : bpmRaw; 
+
+    // State Hierarchy
+    let effectiveState = 'idle';
+    if (['listen', 'wake', 'process', 'think', 'respond', 'speak', 'tts'].some(s => voiceState.includes(s))) {
+      effectiveState = voiceState; 
+    } else if (mediaState === 'playing') {
+      effectiveState = 'dancing';
+    }
+
+    // Trigger update if state or BPM changed
+    if (this._currentState !== effectiveState || (effectiveState === 'dancing' && this._currentBpm !== currentBpm)) {
+      this._currentState = effectiveState;
+      this._currentBpm = currentBpm;
+      if (this.applyState) this.applyState(effectiveState, currentBpm);
     }
   }
 
@@ -41,7 +53,6 @@ class GladosCard extends HTMLElement {
     const zoom = this.config.zoom !== undefined ? this.config.zoom : 85;
     const scale = zoom / 100;
     
-    // Tightly cropped dimensions to remove empty black space
     const width = 280 * scale;
     const height = 320 * scale;
 
@@ -71,19 +82,16 @@ class GladosCard extends HTMLElement {
           height: 100%;
           display: block; 
           overflow: visible; 
-          /* Optimization: CSS variables for LED states */
           --led-color: #ffb800;
           --led-opacity: 0.15;
         }
 
-        /* Optimization: Bind LED elements to the variables */
         .led-dot, #ind-l1, #ind-l2, #ind-r1, #ind-r2 {
-          transition: fill 0.2s, opacity 0.2s;
+          transition: fill 0.2s, opacity 0.15s ease-out;
           fill: var(--led-color);
           opacity: var(--led-opacity);
         }
 
-        /* Optimization: Promote moving layers to GPU */
         #body-pivot, #head-sway-pivot, #glados-head, #eyeball-assembly, #eye-pupil, #bellows, #eye-lid, #eye-lid-bottom {
           will-change: transform;
         }
@@ -115,7 +123,6 @@ class GladosCard extends HTMLElement {
         @keyframes danger-flash { 0%,100%{opacity:0} 50%{opacity:1} }
         #danger-ring.active { animation: danger-flash .35s ease-in-out infinite; }
 
-        /* Pulsing Vents animation specifically for processing state */
         @keyframes led-pulse { 0%,100%{opacity:0.2} 50%{opacity:1} }
         .led-matrix.pulsing .led-dot { animation: led-pulse 2s ease-in-out infinite; }
       </style>
@@ -203,6 +210,14 @@ class GladosCard extends HTMLElement {
               <stop offset="100%" stop-color="#220000"/>
             </radialGradient>
 
+            <radialGradient id="eyeGradDance" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#ffffff"/>
+              <stop offset="20%" stop-color="#aaffaa"/>
+              <stop offset="55%" stop-color="#1DB954"/>
+              <stop offset="80%" stop-color="#0a5926"/>
+              <stop offset="100%" stop-color="#001a00"/>
+            </radialGradient>
+
             <filter id="eyeBloom" x="-120%" y="-120%" width="340%" height="340%">
               <feGaussianBlur stdDeviation="10" result="b"/>
               <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
@@ -281,7 +296,7 @@ class GladosCard extends HTMLElement {
               <rect x="120" y="234" width="40" height="16" rx="4" fill="#08080a"/>
               <ellipse cx="140" cy="252" rx="18" ry="5" fill="#0a0a0e" stroke="#08080c" stroke-width=".7"/>
               <path d="M118" y="234" C110 240 108 248 111 256" stroke="#0a0a0f" stroke-width="5" fill="none" stroke-linecap="round"/>
-              <path d="M162 234 C170 240 172 248 169 256" stroke="#0a0a0f" stroke-width="5" fill="none" stroke-linecap="round"/>
+              <path d="M162" y="234" C170 240 172 248 169 256" stroke="#0a0a0f" stroke-width="5" fill="none" stroke-linecap="round"/>
               <rect x="122" y="256" width="36" height="18" rx="4" fill="#101014" stroke="#08080c" stroke-width=".9"/>
               <rect x="124" y="258" width="32" height="14" rx="3" fill="#08080a"/>
               <ellipse cx="140" cy="274" rx="15" ry="4.5" fill="#0a0a0e" stroke="#08080c" stroke-width=".6"/>
@@ -336,6 +351,7 @@ class GladosCard extends HTMLElement {
                         <circle id="eye-layer-listen" cx="130" cy="364" r="17.6" fill="url(#eyeGradListen)" filter="url(#softGlow)" class="eye-layer" opacity="0" />
                         <circle id="eye-layer-process" cx="130" cy="364" r="17.6" fill="url(#eyeGradProcess)" filter="url(#softGlow)" class="eye-layer" opacity="0" />
                         <circle id="eye-layer-respond" cx="130" cy="364" r="17.6" fill="url(#eyeGradRespond)" filter="url(#softGlow)" class="eye-layer" opacity="0" />
+                        <circle id="eye-layer-dance" cx="130" cy="364" r="17.6" fill="url(#eyeGradDance)" filter="url(#softGlow)" class="eye-layer" opacity="0" />
                         <circle id="eye-center" cx="130" cy="364" r="6.6" fill="#ffe855" />
                         <circle cx="128" cy="362" r="2.2" fill="#ffffff" opacity="0.7" />
                       </g>
@@ -371,6 +387,7 @@ class GladosCard extends HTMLElement {
       eyeLayerListen: root.getElementById('eye-layer-listen'),
       eyeLayerProcess: root.getElementById('eye-layer-process'),
       eyeLayerRespond: root.getElementById('eye-layer-respond'),
+      eyeLayerDance: root.getElementById('eye-layer-dance'),
       eyeHalo: root.getElementById('eye-halo'),
       eyeCenter: root.getElementById('eye-center'),
       pupil: root.getElementById('eye-pupil'),
@@ -384,25 +401,23 @@ class GladosCard extends HTMLElement {
 
     let stateNow = 'idle', talkPhase = 0, talkAnim = null, lidTimer = null;
     let pupilTimer = null, idleTimer = null, glitchRaf = null;
+    let danceTimer = null, danceLedTimer = null, dancePhase = 0;
     let currentBaseLid = 0;
 
     function setHead(rot, tx, ty, scale = 1.0, dur, ease = "cubic-bezier(0.34,1.06,0.64,1)") {
       el.head.style.transition = `transform ${dur}s ${ease}`;
       el.head.style.transform = `rotate(${rot}deg) translate(${tx}px,${ty}px) scale(${scale})`;
     }
-
     function setBodySwivel(rot, sx, dur) {
       el.bodyPivot.style.transition = `transform ${dur || 2.0}s cubic-bezier(0.45,0.05,0.55,0.95)`;
       el.bodyPivot.style.animation = 'none';
       el.bodyPivot.style.transform = `rotate(${rot}deg) scaleX(${sx || 1})`;
     }
-
     function resetBodySwivel() {
       el.bodyPivot.style.transition = '';
       el.bodyPivot.style.animation = '';
       el.bodyPivot.style.transform = '';
     }
-
     function setLid(amount, dur = 0.7) {
       const px = amount * 17; 
       el.lidTop.style.transition = `transform ${dur}s ease-in-out`;
@@ -410,25 +425,20 @@ class GladosCard extends HTMLElement {
       el.lidTop.style.transform = `translateY(${px}px)`;
       el.lidBot.style.transform = `translateY(${-px}px)`;
     }
-
     function setBaseLid(amount, dur = 0.7) {
       currentBaseLid = amount;
       setLid(amount, dur);
     }
-
     function setPupil(px, py) {
       el.pupil.style.transform = `translate(${px}px, ${py}px)`;
       let ey = py * 1.5;
       el.eyeball.style.transform = `translateY(${ey}px)`;
       el.bellows.style.transform = `translateY(${ey}px)`;
     }
-
-    // Optimization: Update via CSS variables instead of DOM queries
     function setLEDs(color, opacity) {
       el.svg.style.setProperty('--led-color', color);
       el.svg.style.setProperty('--led-opacity', opacity);
     }
-
     function startLidBehavior() {
       if (lidTimer) clearTimeout(lidTimer);
       function loop() {
@@ -444,7 +454,6 @@ class GladosCard extends HTMLElement {
       }
       loop();
     }
-
     function stopLidBehavior() {
       if (lidTimer) { clearTimeout(lidTimer); lidTimer = null; }
     }
@@ -459,37 +468,22 @@ class GladosCard extends HTMLElement {
       { name: 'bored', exec() { setHead(2, 0, 20, 0.96, 2.8); setBaseLid(0.7, 1.5); setBodySwivel(1, 1, 3.0); setTimeout(() => { if (stateNow === 'idle') setBaseLid(0, 1.5); }, 1500); }, min: 7000, max: 14000, weight: 1.5 },
       { name: 'full_swivel', exec() { setBodySwivel(-6, 0.96, 2.5); setTimeout(() => { setHead(6, 0, -3, 1.02, 1.2); setBaseLid(0, 0.8); }, 600); }, min: 4000, max: 8000, weight: 0.8 },
       { name: 'glitch', exec() {
-          let count = 0;
-          let lastTime = 0;
-          
+          let count = 0, lastTime = 0;
           if (glitchRaf) cancelAnimationFrame(glitchRaf);
-
           function glitchLoop(timestamp) {
             if (!lastTime) lastTime = timestamp;
-            const elapsed = timestamp - lastTime;
-            
-            if (elapsed > 60) {
+            if (timestamp - lastTime > 60) {
               lastTime = timestamp;
-              
               if (stateNow !== 'idle' || count > 12) {
-                cancelAnimationFrame(glitchRaf);
-                glitchRaf = null;
+                cancelAnimationFrame(glitchRaf); glitchRaf = null;
                 if (stateNow === 'idle') {
-                  el.eyeHalo.setAttribute('fill', '#330800');
-                  el.eyeCenter.setAttribute('fill', '#ffcc00');
-                  setHead(0, 0, 0, 1.0, 0.4);
+                  el.eyeHalo.setAttribute('fill', '#330800'); el.eyeCenter.setAttribute('fill', '#ffcc00'); setHead(0, 0, 0, 1.0, 0.4);
                 }
                 return;
               }
-
               setHead((Math.random()-0.5)*10, (Math.random()-0.5)*8, (Math.random()-0.5)*8, 1.0, 0.05, "linear");
-              if (count % 2 === 0) {
-                 el.eyeHalo.setAttribute('fill', '#110000');
-                 el.eyeCenter.setAttribute('fill', '#884400');
-              } else {
-                 el.eyeHalo.setAttribute('fill', '#ffb800');
-                 el.eyeCenter.setAttribute('fill', '#ffffff');
-              }
+              if (count % 2 === 0) { el.eyeHalo.setAttribute('fill', '#110000'); el.eyeCenter.setAttribute('fill', '#884400'); } 
+              else { el.eyeHalo.setAttribute('fill', '#ffb800'); el.eyeCenter.setAttribute('fill', '#ffffff'); }
               count++;
             }
             glitchRaf = requestAnimationFrame(glitchLoop);
@@ -500,37 +494,15 @@ class GladosCard extends HTMLElement {
 
     function dartPupil() {
       if (stateNow === 'idle') {
-        const activity = config.eye_speed !== undefined ? config.eye_speed : 50;
-        
-        if (activity === 0) {
-          setPupil(0, 0);
-          pupilTimer = setTimeout(dartPupil, 1000);
-          return;
-        }
-
         const max = 7;
-        const px = (Math.random() - 0.5) * max * 2;
-        const py = (Math.random() - 0.5) * max * 2;
-        setPupil(px, py);
-
-        let base = 600;
-        let rand = 2500;
-        if (activity > 50) {
-          let m = 1.0 - ((activity - 50) / 50) * 0.85;
-          base *= m; rand *= m;
-        } else {
-          let m = 1.0 + ((50 - activity) / 50) * 5.0;
-          base *= m; rand *= m;
-        }
-
-        pupilTimer = setTimeout(dartPupil, base + Math.random() * rand);
+        setPupil((Math.random() - 0.5) * max * 2, (Math.random() - 0.5) * max * 2);
+        pupilTimer = setTimeout(dartPupil, 600 + Math.random() * 2500);
       }
     }
 
     function runNextIdleBehavior() {
       if (stateNow !== 'idle') return;
-      const total = IDLE_BEHAVIORS.reduce((s, b) => s + b.weight, 0);
-      let r = Math.random() * total, chosen = IDLE_BEHAVIORS[0];
+      let r = Math.random() * IDLE_BEHAVIORS.reduce((s, b) => s + b.weight, 0), chosen = IDLE_BEHAVIORS[0];
       for (const b of IDLE_BEHAVIORS) { r -= b.weight; if (r <= 0) { chosen = b; break; } }
       chosen.exec();
       idleTimer = setTimeout(runNextIdleBehavior, chosen.min + Math.random() * (chosen.max - chosen.min));
@@ -542,11 +514,122 @@ class GladosCard extends HTMLElement {
       idleTimer = setTimeout(runNextIdleBehavior, 2000 + Math.random() * 3000);
     };
 
-    // Optimization: Handle RAF cleanup
     this.stopIdleCycle = () => {
       if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
       if (pupilTimer) { clearTimeout(pupilTimer); pupilTimer = null; }
       if (glitchRaf) { cancelAnimationFrame(glitchRaf); glitchRaf = null; }
+    };
+
+    // --- 32-ROUTINE RANDOMIZED DANCE LOGIC ---
+    this.stopDanceCycle = () => {
+      if (danceTimer) { clearTimeout(danceTimer); danceTimer = null; }
+      if (danceLedTimer) { clearTimeout(danceLedTimer); danceLedTimer = null; }
+    };
+
+    this.startDanceCycle = (bpm) => {
+      this.stopDanceCycle();
+      dancePhase = 0; 
+      let currentRoutine = Math.floor(Math.random() * 8);
+      
+      const step = () => {
+        if (stateNow !== 'dancing') return;
+        
+        const currentBpm = Math.max(60, Math.min(200, bpm)); 
+        const beatSec = 60 / currentBpm; 
+        const beatMs = beatSec * 1000;
+
+        // Ensure we pick a new block every 16 beats
+        if (dancePhase > 0 && dancePhase % 16 === 0) {
+            let nextRoutine;
+            do { nextRoutine = Math.floor(Math.random() * 8); } while (nextRoutine === currentRoutine);
+            currentRoutine = nextRoutine;
+        }
+
+        const choreoBlock = currentRoutine; 
+        const isDownBeat = dancePhase % 2 === 0;
+        const isQuadBeat = dancePhase % 4 === 0;
+        const phaseMod4 = dancePhase % 4;
+        const phaseMod8 = dancePhase % 8;
+        let dirX = isDownBeat ? 1 : -1;
+
+        setLEDs('#1DB954', '1'); 
+        const maxGlow = (choreoBlock === 7) ? '0.8' : '0.5'; 
+        el.eyeHalo.style.opacity = maxGlow; 
+        el.eyeCenter.style.transform = 'scale(1.2)';
+
+        if (danceLedTimer) clearTimeout(danceLedTimer);
+        danceLedTimer = setTimeout(() => {
+          if (stateNow === 'dancing') {
+            setLEDs('#1DB954', '0.15'); 
+            el.eyeHalo.style.opacity = '0.05'; 
+            el.eyeCenter.style.transform = 'scale(1)'; 
+          }
+        }, beatMs * 0.3);
+
+        let r = 0, tx = 0, ty = 0, s = 1.0, lid = 0.0, ease = "ease-in-out";
+        let moveDur = beatSec;
+        let bodyDur = beatSec * 2;
+
+        if (currentBpm < 90) {
+           moveDur = beatSec * 2; bodyDur = beatSec * 4; ease = "ease-in-out"; lid = 0.4;
+           if (choreoBlock === 0) { r = isQuadBeat ? 8 : -8; tx = isQuadBeat ? 5 : -5; ty = 2; }
+           else if (choreoBlock === 1) { r = 0; tx = 0; ty = isQuadBeat ? 15 : -5; }
+           else if (choreoBlock === 2) { r = Math.sin(dancePhase * Math.PI / 2) * 6; tx = Math.sin(dancePhase * Math.PI / 2) * 5; ty = Math.cos(dancePhase * Math.PI / 4) * 8 + 4; }
+           else if (choreoBlock === 3) { r = (phaseMod8 < 4) ? 10 : -10; tx = (phaseMod8 < 4) ? 4 : -4; ty = 5; }
+           else if (choreoBlock === 4) { r = Math.sin(dancePhase * Math.PI / 4) * 12; tx = 0; ty = 0; }
+           else if (choreoBlock === 5) { r = isQuadBeat ? 4 : -4; tx = 0; ty = isQuadBeat ? 12 : 2; s = isQuadBeat ? 1.03 : 1.0; }
+           else if (choreoBlock === 6) { r = (phaseMod8 === 0) ? 12 : (phaseMod8 === 4) ? -6 : 0; tx = r * 0.5; ty = 8; }
+           else { r = 0; tx = 0; ty = 2; s = 1.05; lid = 0.5 + Math.sin(dancePhase * Math.PI / 2) * 0.3; }
+           if (!isDownBeat) return executeTick(beatMs); 
+
+        } else if (currentBpm < 125) {
+           moveDur = beatSec * 0.8; ease = "cubic-bezier(0.34, 1.06, 0.64, 1)"; lid = 0.2;
+           if (choreoBlock === 0) { r = isDownBeat ? 7 : -7; ty = isDownBeat ? 8 : -2; s = isDownBeat ? 1.02 : 1.0; }
+           else if (choreoBlock === 1) { const side = (phaseMod4 < 2) ? 1 : -1; r = side * 8; tx = side * 4; ty = isDownBeat ? 10 : 2; }
+           else if (choreoBlock === 2) { r = (phaseMod4 === 0) ? 10 : (phaseMod4 === 2) ? -10 : 0; ty = (phaseMod4 === 1 || phaseMod4 === 3) ? 12 : 0; ease = "ease-in-out"; }
+           else if (choreoBlock === 3) { r = [10, 5, -10, -5][phaseMod4]; ty = [0, 8, 0, 8][phaseMod4]; }
+           else if (choreoBlock === 4) { r = 0; tx = isDownBeat ? 8 : -8; ty = 4; }
+           else if (choreoBlock === 5) { r = isDownBeat ? 10 : -10; tx = isDownBeat ? 5 : -5; ty = isDownBeat ? 10 : -5; }
+           else if (choreoBlock === 6) { r = dirX * 6; ty = !isDownBeat ? 14 : 0; s = !isDownBeat ? 1.04 : 1.0; }
+           else { const side = (dancePhase % 3 === 0) ? -1 : 1; r = side * 8; ty = isDownBeat ? 8 : 0; }
+
+        } else if (currentBpm < 160) {
+           moveDur = beatSec * 0.6; ease = "cubic-bezier(0.25, 0.8, 0.25, 1)"; lid = isDownBeat ? 0.1 : 0.0;
+           if (choreoBlock === 0) { r = isDownBeat ? 12 : -12; tx = isDownBeat ? 6 : -6; ty = isDownBeat ? 10 : -8; s = 1.03; }
+           else if (choreoBlock === 1) { r = 0; tx = [8, 0, -8, 0][phaseMod4]; ty = isDownBeat ? 5 : -5; if (phaseMod4 === 3) lid = 0.6; }
+           else if (choreoBlock === 2) { r = isDownBeat ? 5 : -5; ty = isDownBeat ? 5 : -2; s = 1.0 + (phaseMod4 * 0.03); lid = 0.4 - (phaseMod4 * 0.1); }
+           else if (choreoBlock === 3) { r = isDownBeat ? 15 : -15; tx = isDownBeat ? 5 : -5; ty = 8; }
+           else if (choreoBlock === 4) { r = [10, 10, -10, -10][phaseMod4]; tx = [5, 5, -5, -5][phaseMod4]; ty = [8, -2, 8, -2][phaseMod4]; }
+           else if (choreoBlock === 5) { r = dirX * 10; ty = isDownBeat ? 12 : 4; s = 1.02; moveDur = beatSec * 0.4; ease="linear"; }
+           else if (choreoBlock === 6) { r = (phaseMod4 === 1 || phaseMod4 === 3) ? 0 : (phaseMod4 === 0 ? 12 : -12); ty = (phaseMod4 === 1 || phaseMod4 === 3) ? 14 : -2; }
+           else { r = isDownBeat ? 12 : 12; tx = isDownBeat ? 8 : 8; ty = isDownBeat ? 8 : -4; if (isDownBeat) moveDur = beatSec * 0.1; else moveDur = beatSec * 0.8; }
+           if (isDownBeat && choreoBlock !== 2) setPupil((Math.random()-0.5)*8, (Math.random()-0.5)*6);
+
+        } else {
+           moveDur = beatSec * 0.8; ease = "linear"; lid = isQuadBeat ? 0.4 : 0.0; 
+           if (choreoBlock === 0) { r = 0; tx = 0; ty = isDownBeat ? 20 : -10; s = isDownBeat ? 1.08 : 0.95; ease = "ease-out"; }
+           else if (choreoBlock === 1) { r = (Math.random() - 0.5) * 30; tx = (Math.random() - 0.5) * 15; ty = (Math.random() - 0.5) * 15; moveDur = beatSec * 0.5; }
+           else if (choreoBlock === 2) { r = isDownBeat ? 18 : -18; tx = isDownBeat ? 10 : -10; ty = 12; }
+           else if (choreoBlock === 3) { r = isDownBeat ? 10 : -10; tx = (Math.random() - 0.5) * 20; ty = 15; s = 1.1; el.eyeHalo.style.opacity = '0.8'; }
+           else if (choreoBlock === 4) { r = isDownBeat ? 25 : -25; tx = isDownBeat ? 15 : -15; ty = isDownBeat ? 15 : -15; }
+           else if (choreoBlock === 5) { r = 0; tx = 0; ty = isDownBeat ? 12 : 2; moveDur = beatSec * 0.3;  }
+           else if (choreoBlock === 6) { r = Math.sin(dancePhase * Math.PI) * 20; tx = Math.sin(dancePhase * Math.PI) * 12; ty = Math.cos(dancePhase * Math.PI / 2) * 15 + 5; }
+           else { if (phaseMod4 === 0) { r=15; ty=10; s=1.1; moveDur = beatSec * 0.1; } else { r=15; ty=10; s=1.1; moveDur = beatSec * 1.5; } el.eyeCenter.setAttribute('fill', (dancePhase%2===0)?'#ff0000':'#ffffff'); }
+           setPupil((Math.random()-0.5)*15, (Math.random()-0.5)*15);
+        }
+        
+        setHead(r, tx, ty, s, moveDur, ease);
+        setBodySwivel(r * -0.8, 1, bodyDur);
+        setBaseLid(lid, beatSec * 0.5);
+
+        function executeTick(delay) {
+          dancePhase++;
+          danceTimer = setTimeout(step, delay);
+        }
+        executeTick(beatMs);
+      };
+      
+      step();
     };
 
     const TALK_MOVES = [
@@ -576,32 +659,65 @@ class GladosCard extends HTMLElement {
       step();
     }
 
-    const animateGlaDOS = (state) => {
+    const animateGlaDOS = (state, bpm) => {
       stateNow = state;
       if (talkAnim) clearTimeout(talkAnim);
       stopLidBehavior();
       this.stopIdleCycle();
+      this.stopDanceCycle();
 
       el.ledMatrices.forEach(m => m.classList.remove('pulsing'));
       el.dangerRing.setAttribute('opacity', '0');
 
+      // Reset base eye state and layers
+      el.eyeLayerIdle.style.opacity = '0'; 
+      el.eyeLayerListen.style.opacity = '0'; 
+      el.eyeLayerProcess.style.opacity = '0'; 
+      el.eyeLayerRespond.style.opacity = '0';
+      el.eyeLayerDance.style.opacity = '0';
+      el.eyeCenter.style.transform = 'scale(1)';
+      el.eyeCenter.style.transition = 'fill 0.8s ease-in-out';
+
       if (state === 'idle') {
-        el.eyeLayerIdle.style.opacity = '1'; el.eyeLayerListen.style.opacity = '0'; el.eyeLayerProcess.style.opacity = '0'; el.eyeLayerRespond.style.opacity = '0';
-        el.eyeHalo.setAttribute('fill', '#330800'); el.eyeCenter.setAttribute('fill', '#ffcc00');
+        el.eyeLayerIdle.style.opacity = '1';
+        el.eyeHalo.style.transition = 'fill 0.8s ease-in-out, opacity 0.8s'; 
+        el.eyeHalo.setAttribute('fill', '#330800'); 
+        el.eyeHalo.style.opacity = '0.05';
+        el.eyeCenter.setAttribute('fill', '#ffcc00');
         setHead(0, 0, 0, 1.0, 2.2); setLid(0, 1.2); setPupil(0, 0); currentBaseLid = 0;
         setLEDs('#ffb800', '0.15');
         resetBodySwivel();
         startLidBehavior();
         this.startIdleCycle();
+        
+      } else if (state === 'dancing') {
+        el.eyeLayerDance.style.opacity = '1';
+        el.eyeHalo.style.transition = 'fill 0.8s ease-in-out, opacity 0.15s ease-out';
+        el.eyeHalo.setAttribute('fill', '#1DB954'); 
+        el.eyeCenter.setAttribute('fill', '#ffffff'); 
+        el.eyeCenter.style.transformOrigin = '130px 364px';
+        el.eyeCenter.style.transition = 'transform 0.1s ease-out, fill 0.8s ease-in-out';
+
+        setLEDs('#1DB954', '0.15'); 
+        resetBodySwivel();
+        this.startDanceCycle(bpm);
+        
       } else if (state === 'listening') {
-        el.eyeLayerIdle.style.opacity = '0'; el.eyeLayerListen.style.opacity = '1'; el.eyeLayerProcess.style.opacity = '0'; el.eyeLayerRespond.style.opacity = '0';
-        el.eyeHalo.setAttribute('fill', '#00ccff'); el.eyeCenter.setAttribute('fill', '#aaffff');
+        el.eyeLayerListen.style.opacity = '1';
+        el.eyeHalo.style.transition = 'fill 0.8s ease-in-out, opacity 0.8s';
+        el.eyeHalo.setAttribute('fill', '#00ccff'); 
+        el.eyeHalo.style.opacity = '0.05';
+        el.eyeCenter.setAttribute('fill', '#aaffff');
         setHead(4, 0, -8, 1.06, 1.0); setBaseLid(0.1, 0.4); setPupil(0, -3);
         setLEDs('#00ccff', '1');
         setBodySwivel(-2, 1, 1.4);
+        
       } else if (state === 'processing') {
-        el.eyeLayerIdle.style.opacity = '0'; el.eyeLayerListen.style.opacity = '0'; el.eyeLayerProcess.style.opacity = '1'; el.eyeLayerRespond.style.opacity = '0';
-        el.eyeHalo.setAttribute('fill', '#ff6600'); el.eyeCenter.setAttribute('fill', '#ffddaa');
+        el.eyeLayerProcess.style.opacity = '1';
+        el.eyeHalo.style.transition = 'fill 0.8s ease-in-out, opacity 0.8s';
+        el.eyeHalo.setAttribute('fill', '#ff6600'); 
+        el.eyeHalo.style.opacity = '0.05';
+        el.eyeCenter.setAttribute('fill', '#ffddaa');
         setHead(-2, 0, 10, 0.96, 1.4); setBaseLid(0.65, 0.5); 
         setLEDs('#ff6600', '1');
         setBodySwivel(1, 0.98, 1.8);
@@ -613,9 +729,13 @@ class GladosCard extends HTMLElement {
           pupilTimer = setTimeout(dart, 200 + Math.random() * 600);
         };
         dart();
+        
       } else if (state === 'responding') {
-        el.eyeLayerIdle.style.opacity = '0'; el.eyeLayerListen.style.opacity = '0'; el.eyeLayerProcess.style.opacity = '0'; el.eyeLayerRespond.style.opacity = '1';
-        el.eyeHalo.setAttribute('fill', '#ff2200'); el.eyeCenter.setAttribute('fill', '#ffaaaa');
+        el.eyeLayerRespond.style.opacity = '1';
+        el.eyeHalo.style.transition = 'fill 0.8s ease-in-out, opacity 0.8s';
+        el.eyeHalo.setAttribute('fill', '#ff2200'); 
+        el.eyeHalo.style.opacity = '0.05';
+        el.eyeCenter.setAttribute('fill', '#ffaaaa');
         el.dangerRing.setAttribute('opacity', '1');
         setLEDs('#ff2200', '1');
         setBodySwivel(0, 1, 0.8);
@@ -623,23 +743,42 @@ class GladosCard extends HTMLElement {
       }
     };
 
-    this.applyState = (raw) => {
+    this.applyState = (raw, bpm) => {
       const s = (raw || 'idle').toLowerCase();
-      const mapped =
-        s.includes('respond') || s.includes('speak') || s.includes('tts') ? 'responding' :
-        s.includes('listen') ? 'listening' :
-        s.includes('process') || s.includes('think') ? 'processing' :
-        s.includes('wake') ? 'listening' : 'idle';
+      let mapped = 'idle';
+      if (s.includes('respond') || s.includes('speak') || s.includes('tts')) mapped = 'responding';
+      else if (s.includes('listen') || s.includes('wake')) mapped = 'listening';
+      else if (s.includes('process') || s.includes('think')) mapped = 'processing';
+      else if (s === 'dancing') mapped = 'dancing';
 
-      this.stopIdleCycle();
-      animateGlaDOS(mapped);
+      // Abort delay if state changes mid-wait
+      if (this.respondTimer) {
+        clearTimeout(this.respondTimer);
+        this.respondTimer = null;
+      }
+
+      const delaySeconds = config.respond_delay !== undefined ? parseFloat(config.respond_delay) : 0;
+
+      // Apply Response Delay
+      if (mapped === 'responding' && this._lastEffectiveState !== 'responding' && delaySeconds > 0) {
+        this.respondTimer = setTimeout(() => {
+          this._lastEffectiveState = 'responding';
+          animateGlaDOS('responding', bpm);
+        }, delaySeconds * 1000);
+        return; // Stay in current visual state while waiting
+      }
+
+      this._lastEffectiveState = mapped;
+      animateGlaDOS(mapped, bpm);
     };
 
-    this.applyState('idle');
+    this.applyState('idle', 120);
   }
 
   disconnectedCallback() {
     if (this.stopIdleCycle) this.stopIdleCycle();
+    if (this.stopDanceCycle) this.stopDanceCycle();
+    if (this.respondTimer) clearTimeout(this.respondTimer);
   }
 }
 
