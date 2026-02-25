@@ -2,27 +2,13 @@ class GladosCard extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
-    
-    // Internal state cache for HA firehose optimization (Tablet CPU saver)
     this._lastHassVoice = null;
     this._lastHassMedia = null;
     this._lastHassBpm = null;
   }
 
-  static getConfigElement() {
-    return document.createElement('glados-card-editor');
-  }
-
-  static getStubConfig() {
-    return {
-      entity: "",
-      media_entity: "",
-      bpm_entity: "",
-      respond_delay: 0,
-      zoom: 85,
-      transparent_bg: false
-    };
-  }
+  static getConfigElement() { return document.createElement('glados-card-editor'); }
+  static getStubConfig() { return { entity: "", media_entity: "", bpm_entity: "", respond_delay: 0, zoom: 85, transparent_bg: false }; }
 
   setConfig(config) {
     if (!config.entity && !this.config) {
@@ -39,7 +25,6 @@ class GladosCard extends HTMLElement {
 
   set hass(hass) {
     if (!hass) return;
-
     if (!this.contentReady) {
       this.setupDOM();
       this.initGlados();
@@ -54,19 +39,13 @@ class GladosCard extends HTMLElement {
     const newMediaState = (mediaEntity && hass.states[mediaEntity]) ? hass.states[mediaEntity].state.toLowerCase() : 'paused';
     const newBpmState = (bpmEntity && hass.states[bpmEntity]) ? hass.states[bpmEntity].state : '120';
 
-    // Abort immediately if nothing relevant changed (Saves processing power)
-    if (this._lastHassVoice === newVoiceState && 
-        this._lastHassMedia === newMediaState && 
-        this._lastHassBpm === newBpmState) {
-        return;
-    }
+    if (this._lastHassVoice === newVoiceState && this._lastHassMedia === newMediaState && this._lastHassBpm === newBpmState) return;
 
     this._lastHassVoice = newVoiceState;
     this._lastHassMedia = newMediaState;
     this._lastHassBpm = newBpmState;
 
     const currentBpm = isNaN(parseFloat(newBpmState)) ? 120 : parseFloat(newBpmState); 
-
     let effectiveState = 'idle';
     if (['listen', 'wake', 'process', 'think', 'respond', 'speak', 'tts'].some(s => newVoiceState.includes(s))) {
       effectiveState = newVoiceState; 
@@ -81,103 +60,43 @@ class GladosCard extends HTMLElement {
     }
   }
 
-  getCardSize() {
-    return 6; 
-  }
+  getCardSize() { return 6; }
 
   setupDOM() {
     const zoom = this.config.zoom !== undefined ? this.config.zoom : 85;
     const scale = zoom / 100;
-    
     const width = 280 * scale;
     const height = 320 * scale;
-
-    const bgStyle = this.config.transparent_bg 
-      ? 'background: transparent; box-shadow: none; border: none;' 
-      : 'background: var(--ha-card-background, var(--card-background-color, #1c1c1c));';
+    const bgStyle = this.config.transparent_bg ? 'background: transparent; box-shadow: none; border: none;' : 'background: var(--ha-card-background, var(--card-background-color, #1c1c1c));';
 
     this.shadowRoot.innerHTML = `
       <style>
-        :host {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          ${bgStyle}
-          border-radius: var(--ha-card-border-radius, 12px);
-          overflow: hidden;
-          width: 100%;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        :host { display: flex; align-items: center; justify-content: center; ${bgStyle} border-radius: var(--ha-card-border-radius, 12px); overflow: hidden; width: 100%; }
+        #scene { width: ${width}px; height: ${height}px; display: flex; align-items: center; justify-content: center; }
+        #glados-svg { width: 100%; height: 100%; display: block; overflow: visible; --led-color: #ffb800; --led-opacity: 0.15; }
+        .led-dot, #ind-l1, #ind-l2, #ind-r1, #ind-r2 { transition: fill 0.2s, opacity 0.15s ease-out; fill: var(--led-color); opacity: var(--led-opacity); }
         
-        #scene {
-          width: ${width}px;
-          height: ${height}px;
-          display: flex; 
-          align-items: center;
-          justify-content: center;
-        }
-        
-        #glados-svg { 
-          width: 100%;
-          height: 100%;
-          display: block; 
-          overflow: visible; 
-          --led-color: #ffb800;
-          --led-opacity: 0.15;
-        }
-
-        .led-dot, #ind-l1, #ind-l2, #ind-r1, #ind-r2 {
-          transition: fill 0.2s, opacity 0.15s ease-out;
-          fill: var(--led-color);
-          opacity: var(--led-opacity);
-        }
-
-        #body-pivot, #head-sway-pivot, #glados-head, #eyeball-assembly, #eye-pupil, #bellows, #eye-lid, #eye-lid-bottom {
-          will-change: transform;
-        }
+        /* TABLET GPU OPTIMIZATION: Hardware acceleration layer forcing */
+        #body-pivot, #head-sway-pivot, #glados-head, #eyeball-assembly, #eye-pupil, #bellows, #eye-lid, #eye-lid-bottom { will-change: transform; }
         
         #body-pivot { transform-origin: 140px 116px; animation: body-sway 8s ease-in-out infinite; }
-        @keyframes body-sway {
-          0%, 100% { transform: rotate(-1.4deg); }
-          50%      { transform: rotate( 1.4deg); }
-        }
-        
+        @keyframes body-sway { 0%, 100% { transform: rotate(-1.4deg); } 50% { transform: rotate( 1.4deg); } }
         #head-sway-pivot { transform-origin: 140px 285px; animation: head-ambient-sway 13s ease-in-out infinite; }
-        @keyframes head-ambient-sway {
-          0%, 100% { transform: rotate(-0.8deg); }
-          50%      { transform: rotate(0.8deg); }
-        }
-
-        #glados-head {
-          transform-box: view-box; transform-origin: 140px 285px;
-          transition: transform 1.6s cubic-bezier(0.34, 1.06, 0.64, 1);
-        }
-
+        @keyframes head-ambient-sway { 0%, 100% { transform: rotate(-0.8deg); } 50% { transform: rotate(0.8deg); } }
+        #glados-head { transform-box: view-box; transform-origin: 140px 285px; transition: transform 1.6s cubic-bezier(0.34, 1.06, 0.64, 1); }
         #eye-halo, #eye-center { transition: fill 0.8s ease-in-out; }
         .eye-layer { transition: opacity 0.8s ease-in-out; }
-        
         @keyframes eye-breathe { 0%,100%{opacity:.02} 48%{opacity:.2} }
         #eye-halo.breathing { animation: eye-breathe 8s ease-in-out infinite; }
-        
         @keyframes danger-flash { 0%,100%{opacity:0} 50%{opacity:1} }
         #danger-ring.active { animation: danger-flash .35s ease-in-out infinite; }
-
-        @keyframes led-pulse { 0%,100%{opacity:0.2} 50%{opacity:1} }
-        .led-matrix.pulsing .led-dot { animation: led-pulse 2s ease-in-out infinite; }
       </style>
       
       <div id="scene">
         <svg id="glados-svg" viewBox="0 116 280 320" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
           <defs>
             <linearGradient id="ceramicGrad" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stop-color="#8a8d94"/>
-              <stop offset="8%" stop-color="#b0b4bc"/>
-              <stop offset="8.5%" stop-color="#ffffff"/>
-              <stop offset="25%" stop-color="#ffffff"/>
-              <stop offset="75%" stop-color="#ffffff"/>
-              <stop offset="91.5%" stop-color="#e8eaec"/>
-              <stop offset="92%" stop-color="#a0a4ac"/>
-              <stop offset="100%" stop-color="#6a6d75"/>
+              <stop offset="0%" stop-color="#8a8d94"/><stop offset="8%" stop-color="#b0b4bc"/><stop offset="8.5%" stop-color="#ffffff"/><stop offset="25%" stop-color="#ffffff"/><stop offset="75%" stop-color="#ffffff"/><stop offset="91.5%" stop-color="#e8eaec"/><stop offset="92%" stop-color="#a0a4ac"/><stop offset="100%" stop-color="#6a6d75"/>
             </linearGradient>
             
             <linearGradient id="ceramicBackgroundGrad" x1="0" y1="0" x2="1" y2="0">
@@ -192,65 +111,35 @@ class GladosCard extends HTMLElement {
             </linearGradient>
 
             <linearGradient id="ceramicShadow" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#ffffff" stop-opacity="0"/>
-              <stop offset="60%" stop-color="#60646c" stop-opacity="0.1"/>
-              <stop offset="85%" stop-color="#2a2c32" stop-opacity="0.5"/>
-              <stop offset="100%" stop-color="#0a0a0f" stop-opacity="0.85"/>
+              <stop offset="0%" stop-color="#ffffff" stop-opacity="0"/><stop offset="60%" stop-color="#60646c" stop-opacity="0.1"/><stop offset="85%" stop-color="#2a2c32" stop-opacity="0.5"/><stop offset="100%" stop-color="#0a0a0f" stop-opacity="0.85"/>
             </linearGradient>
 
             <linearGradient id="bezelGrad" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stop-color="#4a4d54"/>
-              <stop offset="20%" stop-color="#6a6d75"/>
-              <stop offset="50%" stop-color="#3a3c42"/>
-              <stop offset="80%" stop-color="#1a1c20"/>
-              <stop offset="100%" stop-color="#0a0a0c"/>
+              <stop offset="0%" stop-color="#4a4d54"/><stop offset="20%" stop-color="#6a6d75"/><stop offset="50%" stop-color="#3a3c42"/><stop offset="80%" stop-color="#1a1c20"/><stop offset="100%" stop-color="#0a0a0c"/>
             </linearGradient>
 
             <linearGradient id="cavityGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#181a1c"/>
-              <stop offset="100%" stop-color="#30353a"/>
+              <stop offset="0%" stop-color="#181a1c"/><stop offset="100%" stop-color="#30353a"/>
             </linearGradient>
             
             <linearGradient id="trackGrad" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stop-color="#1a1c20"/>
-              <stop offset="50%" stop-color="#3a3e46"/>
-              <stop offset="100%" stop-color="#121316"/>
+              <stop offset="0%" stop-color="#1a1c20"/><stop offset="50%" stop-color="#3a3e46"/><stop offset="100%" stop-color="#121316"/>
             </linearGradient>
             
             <radialGradient id="eyeGradIdle" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stop-color="#ffffff"/>
-              <stop offset="20%" stop-color="#ffcc00"/>
-              <stop offset="55%" stop-color="#d95500"/>
-              <stop offset="80%" stop-color="#7a1100"/>
-              <stop offset="100%" stop-color="#110000"/>
+              <stop offset="0%" stop-color="#ffffff"/><stop offset="20%" stop-color="#ffcc00"/><stop offset="55%" stop-color="#d95500"/><stop offset="80%" stop-color="#7a1100"/><stop offset="100%" stop-color="#110000"/>
             </radialGradient>
             <radialGradient id="eyeGradListen" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stop-color="#ffffff"/>
-              <stop offset="25%" stop-color="#aaffff"/>
-              <stop offset="60%" stop-color="#00ccff"/>
-              <stop offset="85%" stop-color="#0066aa"/>
-              <stop offset="100%" stop-color="#001a33"/>
+              <stop offset="0%" stop-color="#ffffff"/><stop offset="25%" stop-color="#aaffff"/><stop offset="60%" stop-color="#00ccff"/><stop offset="85%" stop-color="#0066aa"/><stop offset="100%" stop-color="#001a33"/>
             </radialGradient>
             <radialGradient id="eyeGradProcess" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stop-color="#ffffff"/>
-              <stop offset="25%" stop-color="#ffddaa"/>
-              <stop offset="60%" stop-color="#ff6600"/>
-              <stop offset="85%" stop-color="#aa3300"/>
-              <stop offset="100%" stop-color="#220a00"/>
+              <stop offset="0%" stop-color="#ffffff"/><stop offset="25%" stop-color="#ffddaa"/><stop offset="60%" stop-color="#ff6600"/><stop offset="85%" stop-color="#aa3300"/><stop offset="100%" stop-color="#220a00"/>
             </radialGradient>
             <radialGradient id="eyeGradRespond" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stop-color="#ffffff"/>
-              <stop offset="25%" stop-color="#ffaaaa"/>
-              <stop offset="60%" stop-color="#ff2200"/>
-              <stop offset="85%" stop-color="#aa0000"/>
-              <stop offset="100%" stop-color="#220000"/>
+              <stop offset="0%" stop-color="#ffffff"/><stop offset="25%" stop-color="#ffaaaa"/><stop offset="60%" stop-color="#ff2200"/><stop offset="85%" stop-color="#aa0000"/><stop offset="100%" stop-color="#220000"/>
             </radialGradient>
             <radialGradient id="eyeGradDance" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stop-color="#ffffff"/>
-              <stop offset="20%" stop-color="#aaffaa"/>
-              <stop offset="55%" stop-color="#1DB954"/>
-              <stop offset="80%" stop-color="#0a5926"/>
-              <stop offset="100%" stop-color="#001a00"/>
+              <stop offset="0%" stop-color="#ffffff"/><stop offset="20%" stop-color="#aaffaa"/><stop offset="55%" stop-color="#1DB954"/><stop offset="80%" stop-color="#0a5926"/><stop offset="100%" stop-color="#001a00"/>
             </radialGradient>
 
             <filter id="eyeBloom" x="-120%" y="-120%" width="340%" height="340%">
@@ -265,6 +154,7 @@ class GladosCard extends HTMLElement {
               <feGaussianBlur stdDeviation="2.5" result="b"/>
               <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
             </filter>
+            
             <linearGradient id="lidGrad" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stop-color="#1f2124"/><stop offset="100%" stop-color="#08090a"/>
             </linearGradient>
@@ -656,641 +546,642 @@ class GladosCard extends HTMLElement {
 
   applyMeshPolyfill(root) {
     const t="http://www.w3.org/2000/svg",e="http://www.w3.org/1999/xlink",s="http://www.w3.org/1999/xhtml",r=2;
-    const n=(t,e,s,r)=>{let n=new x(.5*(e.x+s.x),.5*(e.y+s.y)),o=new x(.5*(t.x+e.x),.5*(t.y+e.y)),i=new x(.5*(s.x+r.x),.5*(s.y+r.y)),a=new x(.5*(n.x+o.x),.5*(n.y+o.y)),h=new x(.5*(n.x+i.x),.5*(n.y+i.y)),l=new x(.5*(a.x+h.x),.5*(a.y+h.y));return[[t,o,a,l],[l,h,i,r]]},o=t=>{let e=t[0].distSquared(t[1]),s=t[2].distSquared(t[3]),r=.25*t[0].distSquared(t[2]),n=.25*t[1].distSquared(t[3]),o=e>s?e:s,i=r>n?r:n;return 18*(o>i?o:i)},i=(t,e)=>Math.sqrt(t.distSquared(e)),a=(t,e)=>t.scale(2/3).add(e.scale(1/3)),h=t=>{let e,s,r,n,o,i,a,h=new g;return t.match(/(\w+\(\s*[^)]+\))+/g).forEach(t=>{let l=t.match(/[\w.-]+/g),d=l.shift();switch(d){case"translate":2===l.length?e=new g(1,0,0,1,l[0],l[1]):(console.error("mesh.js: translate does not have 2 arguments!"),e=new g(1,0,0,1,0,0)),h=h.append(e);break;case"scale":1===l.length?s=new g(l[0],0,0,l[0],0,0):2===l.length?s=new g(l[0],0,0,l[1],0,0):(console.error("mesh.js: scale does not have 1 or 2 arguments!"),s=new g(1,0,0,1,0,0)),h=h.append(s);break;case"rotate":if(3===l.length&&(e=new g(1,0,0,1,l[1],l[2]),h=h.append(e)),l[0]){r=l[0]*Math.PI/180;let t=Math.cos(r),e=Math.sin(r);Math.abs(t)<1e-16&&(t=0),Math.abs(e)<1e-16&&(e=0),a=new g(t,e,-e,t,0,0),h=h.append(a)}else console.error("math.js: No argument to rotate transform!");3===l.length&&(e=new g(1,0,0,1,-l[1],-l[2]),h=h.append(e));break;case"skewX":l[0]?(r=l[0]*Math.PI/180,n=Math.tan(r),o=new g(1,0,n,1,0,0),h=h.append(o)):console.error("math.js: No argument to skewX transform!");break;case"skewY":l[0]?(r=l[0]*Math.PI/180,n=Math.tan(r),i=new g(1,n,0,1,0,0),h=h.append(i)):console.error("math.js: No argument to skewY transform!");break;case"matrix":6===l.length?h=h.append(new g(...l)):console.error("math.js: Incorrect number of arguments for matrix!");break;default:console.error("mesh.js: Unhandled transform type: "+d)}}),h},l=t=>{let e=[],s=t.split(/[ ,]+/);for(let t=0,r=s.length-1;t<r;t+=2)e.push(new x(parseFloat(s[t]),parseFloat(s[t+1])));return e},d=(t,e)=>{for(let s in e)t.setAttribute(s,e[s])},c=(t,e,s,r,n)=>{let o,i,a=[0,0,0,0];for(let h=0;h<3;++h)e[h]<t[h]&&e[h]<s[h]||t[h]<e[h]&&s[h]<e[h]?a[h]=0:(a[h]=.5*((e[h]-t[h])/r+(s[h]-e[h])/n),o=Math.abs(3*(e[h]-t[h])/r),i=Math.abs(3*(s[h]-e[h])/n),a[h]>o?a[h]=o:a[h]>i&&(a[h]=i));return a},u=[[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0],[-3,3,0,0,-2,-1,0,0,0,0,0,0,0,0,0,0],[2,-2,0,0,1,1,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0],[0,0,0,0,0,0,0,0,-3,3,0,0,-2,-1,0,0],[0,0,0,0,0,0,0,0,2,-2,0,0,1,1,0,0],[-3,0,3,0,0,0,0,0,-2,0,-1,0,0,0,0,0],[0,0,0,0,-3,0,3,0,0,0,0,0,-2,0,-1,0],[9,-9,-9,9,6,3,-6,-3,6,-6,3,-3,4,2,2,1],[-6,6,6,-6,-3,-3,3,3,-4,4,-2,2,-2,-2,-1,-1],[2,0,-2,0,0,0,0,0,1,0,1,0,0,0,0,0],[0,0,0,0,2,0,-2,0,0,0,0,0,1,0,1,0],[-6,6,6,-6,-4,-2,4,2,-3,3,-3,3,-2,-1,-2,-1],[4,-4,-4,4,2,2,-2,-2,2,-2,2,-2,1,1,1,1]],f=t=>{let e=[];for(let s=0;s<16;++s){e[s]=0;for(let r=0;r<16;++r)e[s]+=u[s][r]*t[r]}return e},p=(t,e,s)=>{const r=e*e,n=s*s,o=e*e*e,i=s*s*s;return t[0]+t[1]*e+t[2]*r+t[3]*o+t[4]*s+t[5]*s*e+t[6]*s*r+t[7]*s*o+t[8]*n+t[9]*n*e+t[10]*n*r+t[11]*n*o+t[12]*i+t[13]*i*e+t[14]*i*r+t[15]*i*o},y=t=>{let e=[],s=[],r=[];for(let s=0;s<4;++s)e[s]=[],e[s][0]=n(t[0][s],t[1][s],t[2][s],t[3][s]),e[s][1]=[],e[s][1].push(...n(...e[s][0][0])),e[s][1].push(...n(...e[s][0][1])),e[s][2]=[],e[s][2].push(...n(...e[s][1][0])),e[s][2].push(...n(...e[s][1][1])),e[s][2].push(...n(...e[s][1][2])),e[s][2].push(...n(...e[s][1][3]));for(let t=0;t<8;++t){s[t]=[];for(let r=0;r<4;++r)s[t][r]=[],s[t][r][0]=n(e[0][2][t][r],e[1][2][t][r],e[2][2][t][r],e[3][2][t][r]),s[t][r][1]=[],s[t][r][1].push(...n(...s[t][r][0][0])),s[t][r][1].push(...n(...s[t][r][0][1])),s[t][r][2]=[],s[t][r][2].push(...n(...s[t][r][1][0])),s[t][r][2].push(...n(...s[t][r][1][1])),s[t][r][2].push(...n(...s[t][r][1][2])),s[t][r][2].push(...n(...s[t][r][1][3]))}for(let t=0;t<8;++t){r[t]=[];for(let e=0;e<8;++e)r[t][e]=[],r[t][e][0]=s[t][0][2][e],r[t][e][1]=s[t][1][2][e],r[t][e][2]=s[t][2][2][e],r[t][e][3]=s[t][3][2][e]}return r};class x{constructor(t,e){this.x=t||0,this.y=e||0}toString(){return`(x=${this.x}, y=${this.y})`}clone(){return new x(this.x,this.y)}add(t){return new x(this.x+t.x,this.y+t.y)}scale(t){return void 0===t.x?new x(this.x*t,this.y*t):new x(this.x*t.x,this.y*t.y)}distSquared(t){let e=this.x-t.x,s=this.y-t.y;return e*e+s*s}transform(t){let e=this.x*t.a+this.y*t.c+t.e,s=this.x*t.b+this.y*t.d+t.f;return new x(e,s)}}class g{constructor(t,e,s,r,n,o){void 0===t?(this.a=1,this.b=0,this.c=0,this.d=1,this.e=0,this.f=0):(this.a=t,this.b=e,this.c=s,this.d=r,this.e=n,this.f=o)}toString(){return`affine: ${this.a} ${this.c} ${this.e} \n       ${this.b} ${this.d} ${this.f}`}append(t){t instanceof g||console.error("mesh.js: argument to Affine.append is not affine!");let e=this.a*t.a+this.c*t.b,s=this.b*t.a+this.d*t.b,r=this.a*t.c+this.c*t.d,n=this.b*t.c+this.d*t.d,o=this.a*t.e+this.c*t.f+this.e,i=this.b*t.e+this.d*t.f+this.f;return new g(e,s,r,n,o,i)}}class w{constructor(t,e){this.nodes=t,this.colors=e}paintCurve(t,e){if(o(this.nodes)>r){const s=n(...this.nodes);let r=[[],[]],o=[[],[]];for(let t=0;t<4;++t)r[0][t]=this.colors[0][t],r[1][t]=(this.colors[0][t]+this.colors[1][t])/2,o[0][t]=r[1][t],o[1][t]=this.colors[1][t];let i=new w(s[0],r),a=new w(s[1],o);i.paintCurve(t,e),a.paintCurve(t,e)}else{let s=Math.round(this.nodes[0].x);if(s>=0&&s<e){let r=4*(~~this.nodes[0].y*e+s);t[r]=Math.round(this.colors[0][0]),t[r+1]=Math.round(this.colors[0][1]),t[r+2]=Math.round(this.colors[0][2]),t[r+3]=Math.round(this.colors[0][3])}}}}class m{constructor(t,e){this.nodes=t,this.colors=e}split(){let t=[[],[],[],[]],e=[[],[],[],[]],s=[[[],[]],[[],[]]],r=[[[],[]],[[],[]]];for(let s=0;s<4;++s){const r=n(this.nodes[0][s],this.nodes[1][s],this.nodes[2][s],this.nodes[3][s]);t[0][s]=r[0][0],t[1][s]=r[0][1],t[2][s]=r[0][2],t[3][s]=r[0][3],e[0][s]=r[1][0],e[1][s]=r[1][1],e[2][s]=r[1][2],e[3][s]=r[1][3]}for(let t=0;t<4;++t)s[0][0][t]=this.colors[0][0][t],s[0][1][t]=this.colors[0][1][t],s[1][0][t]=(this.colors[0][0][t]+this.colors[1][0][t])/2,s[1][1][t]=(this.colors[0][1][t]+this.colors[1][1][t])/2,r[0][0][t]=s[1][0][t],r[0][1][t]=s[1][1][t],r[1][0][t]=this.colors[1][0][t],r[1][1][t]=this.colors[1][1][t];return[new m(t,s),new m(e,r)]}paint(t,e){let s,n=!1;for(let t=0;t<4;++t)if((s=o([this.nodes[0][t],this.nodes[1][t],this.nodes[2][t],this.nodes[3][t]]))>r){n=!0;break}if(n){let s=this.split();s[0].paint(t,e),s[1].paint(t,e)}else{new w([...this.nodes[0]],[...this.colors[0]]).paintCurve(t,e)}}}class b{constructor(t){this.readMesh(t),this.type=t.getAttribute("type")||"bilinear"}readMesh(t){let e=[[]],s=[[]],r=Number(t.getAttribute("x")),n=Number(t.getAttribute("y"));e[0][0]=new x(r,n);let o=t.children;for(let t=0,r=o.length;t<r;++t){e[3*t+1]=[],e[3*t+2]=[],e[3*t+3]=[],s[t+1]=[];let r=o[t].children;for(let n=0,o=r.length;n<o;++n){let o=r[n].children;for(let r=0,i=o.length;r<i;++r){let i=r;0!==t&&++i;let h,d=o[r].getAttribute("path"),c="l";null!=d&&(c=(h=d.match(/\s*([lLcC])\s*(.*)/))[1]);let u=l(h[2]);switch(c){case"l":0===i?(e[3*t][3*n+3]=u[0].add(e[3*t][3*n]),e[3*t][3*n+1]=a(e[3*t][3*n],e[3*t][3*n+3]),e[3*t][3*n+2]=a(e[3*t][3*n+3],e[3*t][3*n])):1===i?(e[3*t+3][3*n+3]=u[0].add(e[3*t][3*n+3]),e[3*t+1][3*n+3]=a(e[3*t][3*n+3],e[3*t+3][3*n+3]),e[3*t+2][3*n+3]=a(e[3*t+3][3*n+3],e[3*t][3*n+3])):2===i?(0===n&&(e[3*t+3][3*n+0]=u[0].add(e[3*t+3][3*n+3])),e[3*t+3][3*n+1]=a(e[3*t+3][3*n],e[3*t+3][3*n+3]),e[3*t+3][3*n+2]=a(e[3*t+3][3*n+3],e[3*t+3][3*n])):(e[3*t+1][3*n]=a(e[3*t][3*n],e[3*t+3][3*n]),e[3*t+2][3*n]=a(e[3*t+3][3*n],e[3*t][3*n]));break;case"L":0===i?(e[3*t][3*n+3]=u[0],e[3*t][3*n+1]=a(e[3*t][3*n],e[3*t][3*n+3]),e[3*t][3*n+2]=a(e[3*t][3*n+3],e[3*t][3*n])):1===i?(e[3*t+3][3*n+3]=u[0],e[3*t+1][3*n+3]=a(e[3*t][3*n+3],e[3*t+3][3*n+3]),e[3*t+2][3*n+3]=a(e[3*t+3][3*n+3],e[3*t][3*n+3])):2===i?(0===n&&(e[3*t+3][3*n+0]=u[0]),e[3*t+3][3*n+1]=a(e[3*t+3][3*n],e[3*t+3][3*n+3]),e[3*t+3][3*n+2]=a(e[3*t+3][3*n+3],e[3*t+3][3*n])):(e[3*t+1][3*n]=a(e[3*t][3*n],e[3*t+3][3*n]),e[3*t+2][3*n]=a(e[3*t+3][3*n],e[3*t][3*n]));break;case"c":0===i?(e[3*t][3*n+1]=u[0].add(e[3*t][3*n]),e[3*t][3*n+2]=u[1].add(e[3*t][3*n]),e[3*t][3*n+3]=u[2].add(e[3*t][3*n])):1===i?(e[3*t+1][3*n+3]=u[0].add(e[3*t][3*n+3]),e[3*t+2][3*n+3]=u[1].add(e[3*t][3*n+3]),e[3*t+3][3*n+3]=u[2].add(e[3*t][3*n+3])):2===i?(e[3*t+3][3*n+2]=u[0].add(e[3*t+3][3*n+3]),e[3*t+3][3*n+1]=u[1].add(e[3*t+3][3*n+3]),0===n&&(e[3*t+3][3*n+0]=u[2].add(e[3*t+3][3*n+3]))):(e[3*t+2][3*n]=u[0].add(e[3*t+3][3*n]),e[3*t+1][3*n]=u[1].add(e[3*t+3][3*n]));break;case"C":0===i?(e[3*t][3*n+1]=u[0],e[3*t][3*n+2]=u[1],e[3*t][3*n+3]=u[2]):1===i?(e[3*t+1][3*n+3]=u[0],e[3*t+2][3*n+3]=u[1],e[3*t+3][3*n+3]=u[2]):2===i?(e[3*t+3][3*n+2]=u[0],e[3*t+3][3*n+1]=u[1],0===n&&(e[3*t+3][3*n+0]=u[2])):(e[3*t+2][3*n]=u[0],e[3*t+1][3*n]=u[1]);break;default:console.error("mesh.js: "+c+" invalid path type.")}if(0===t&&0===n||r>0){let e=window.getComputedStyle(o[r]).stopColor.match(/^rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/i),a=window.getComputedStyle(o[r]).stopOpacity,h=255;a&&(h=Math.floor(255*a)),e&&(0===i?(s[t][n]=[],s[t][n][0]=Math.floor(e[1]),s[t][n][1]=Math.floor(e[2]),s[t][n][2]=Math.floor(e[3]),s[t][n][3]=h):1===i?(s[t][n+1]=[],s[t][n+1][0]=Math.floor(e[1]),s[t][n+1][1]=Math.floor(e[2]),s[t][n+1][2]=Math.floor(e[3]),s[t][n+1][3]=h):2===i?(s[t+1][n+1]=[],s[t+1][n+1][0]=Math.floor(e[1]),s[t+1][n+1][1]=Math.floor(e[2]),s[t+1][n+1][2]=Math.floor(e[3]),s[t+1][n+1][3]=h):3===i&&(s[t+1][n]=[],s[t+1][n][0]=Math.floor(e[1]),s[t+1][n][1]=Math.floor(e[2]),s[t+1][n][2]=Math.floor(e[3]),s[t+1][n][3]=h))}}e[3*t+1][3*n+1]=new x,e[3*t+1][3*n+2]=new x,e[3*t+2][3*n+1]=new x,e[3*t+2][3*n+2]=new x,e[3*t+1][3*n+1].x=(-4*e[3*t][3*n].x+6*(e[3*t][3*n+1].x+e[3*t+1][3*n].x)+-2*(e[3*t][3*n+3].x+e[3*t+3][3*n].x)+3*(e[3*t+3][3*n+1].x+e[3*t+1][3*n+3].x)+-1*e[3*t+3][3*n+3].x)/9,e[3*t+1][3*n+2].x=(-4*e[3*t][3*n+3].x+6*(e[3*t][3*n+2].x+e[3*t+1][3*n+3].x)+-2*(e[3*t][3*n].x+e[3*t+3][3*n+3].x)+3*(e[3*t+3][3*n+2].x+e[3*t+1][3*n].x)+-1*e[3*t+3][3*n].x)/9,e[3*t+2][3*n+1].x=(-4*e[3*t+3][3*n].x+6*(e[3*t+3][3*n+1].x+e[3*t+2][3*n].x)+-2*(e[3*t+3][3*n+3].x+e[3*t][3*n].x)+3*(e[3*t][3*n+1].x+e[3*t+2][3*n+3].x)+-1*e[3*t][3*n+3].x)/9,e[3*t+2][3*n+2].x=(-4*e[3*t+3][3*n+3].x+6*(e[3*t+3][3*n+2].x+e[3*t+2][3*n+3].x)+-2*(e[3*t+3][3*n].x+e[3*t][3*n+3].x)+3*(e[3*t][3*n+2].x+e[3*t+2][3*n].x)+-1*e[3*t][3*n].x)/9,e[3*t+1][3*n+1].y=(-4*e[3*t][3*n].y+6*(e[3*t][3*n+1].y+e[3*t+1][3*n].y)+-2*(e[3*t][3*n+3].y+e[3*t+3][3*n].y)+3*(e[3*t+3][3*n+1].y+e[3*t+1][3*n+3].y)+-1*e[3*t+3][3*n+3].y)/9,e[3*t+1][3*n+2].y=(-4*e[3*t][3*n+3].y+6*(e[3*t][3*n+2].y+e[3*t+1][3*n+3].y)+-2*(e[3*t][3*n].y+e[3*t+3][3*n+3].y)+3*(e[3*t+3][3*n+2].y+e[3*t+1][3*n].y)+-1*e[3*t+3][3*n].y)/9,e[3*t+2][3*n+1].y=(-4*e[3*t+3][3*n].y+6*(e[3*t+3][3*n+1].y+e[3*t+2][3*n].y)+-2*(e[3*t+3][3*n+3].y+e[3*t][3*n].y)+3*(e[3*t][3*n+1].y+e[3*t+2][3*n+3].y)+-1*e[3*t][3*n+3].y)/9,e[3*t+2][3*n+2].y=(-4*e[3*t+3][3*n+3].y+6*(e[3*t+3][3*n+2].y+e[3*t+2][3*n+3].y)+-2*(e[3*t+3][3*n].y+e[3*t][3*n+3].y)+3*(e[3*t][3*n+2].y+e[3*t+2][3*n].y)+-1*e[3*t][3*n].y)/9}}this.nodes=e,this.colors=s}paintMesh(t,e){let s=(this.nodes.length-1)/3,r=(this.nodes[0].length-1)/3;if("bilinear"===this.type||s<2||r<2){let n;for(let o=0;o<s;++o)for(let s=0;s<r;++s){let r=[];for(let t=3*o,e=3*o+4;t<e;++t)r.push(this.nodes[t].slice(3*s,3*s+4));let i=[];i.push(this.colors[o].slice(s,s+2)),i.push(this.colors[o+1].slice(s,s+2)),(n=new m(r,i)).paint(t,e)}}else{let n,o,a,h,l,d,u;const x=s,g=r;s++,r++;let w=new Array(s);for(let t=0;t<s;++t){w[t]=new Array(r);for(let e=0;e<r;++e)w[t][e]=[],w[t][e][0]=this.nodes[3*t][3*e],w[t][e][1]=this.colors[t][e]}for(let t=0;t<s;++t)for(let e=0;e<r;++e)0!==t&&t!==x&&(n=i(w[t-1][e][0],w[t][e][0]),o=i(w[t+1][e][0],w[t][e][0]),w[t][e][2]=c(w[t-1][e][1],w[t][e][1],w[t+1][e][1],n,o)),0!==e&&e!==g&&(n=i(w[t][e-1][0],w[t][e][0]),o=i(w[t][e+1][0],w[t][e][0]),w[t][e][3]=c(w[t][e-1][1],w[t][e][1],w[t][e+1][1],n,o));for(let t=0;t<r;++t){w[0][t][2]=[],w[x][t][2]=[];for(let e=0;e<4;++e)n=i(w[1][t][0],w[0][t][0]),o=i(w[x][t][0],w[x-1][t][0]),w[0][t][2][e]=n>0?2*(w[1][t][1][e]-w[0][t][1][e])/n-w[1][t][2][e]:0,w[x][t][2][e]=o>0?2*(w[x][t][1][e]-w[x-1][t][1][e])/o-w[x-1][t][2][e]:0}for(let t=0;t<s;++t){w[t][0][3]=[],w[t][g][3]=[];for(let e=0;e<4;++e)n=i(w[t][1][0],w[t][0][0]),o=i(w[t][g][0],w[t][g-1][0]),w[t][0][3][e]=n>0?2*(w[t][1][1][e]-w[t][0][1][e])/n-w[t][1][3][e]:0,w[t][g][3][e]=o>0?2*(w[t][g][1][e]-w[t][g-1][1][e])/o-w[t][g-1][3][e]:0}for(let s=0;s<x;++s)for(let r=0;r<g;++r){let n=i(w[s][r][0],w[s+1][r][0]),o=i(w[s][r+1][0],w[s+1][r+1][0]),c=i(w[s][r][0],w[s][r+1][0]),x=i(w[s+1][r][0],w[s+1][r+1][0]),g=[[],[],[],[]];for(let t=0;t<4;++t){(d=[])[0]=w[s][r][1][t],d[1]=w[s+1][r][1][t],d[2]=w[s][r+1][1][t],d[3]=w[s+1][r+1][1][t],d[4]=w[s][r][2][t]*n,d[5]=w[s+1][r][2][t]*n,d[6]=w[s][r+1][2][t]*o,d[7]=w[s+1][r+1][2][t]*o,d[8]=w[s][r][3][t]*c,d[9]=w[s+1][r][3][t]*x,d[10]=w[s][r+1][3][t]*c,d[11]=w[s+1][r+1][3][t]*x,d[12]=0,d[13]=0,d[14]=0,d[15]=0,u=f(d);for(let e=0;e<9;++e){g[t][e]=[];for(let s=0;s<9;++s)g[t][e][s]=p(u,e/8,s/8),g[t][e][s]>255?g[t][e][s]=255:g[t][e][s]<0&&(g[t][e][s]=0)}}h=[];for(let t=3*s,e=3*s+4;t<e;++t)h.push(this.nodes[t].slice(3*r,3*r+4));l=y(h);for(let s=0;s<8;++s)for(let r=0;r<8;++r)(a=new m(l[s][r],[[[g[0][s][r],g[1][s][r],g[2][s][r],g[3][s][r]],[g[0][s][r+1],g[1][s][r+1],g[2][s][r+1],g[3][s][r+1]]],[[g[0][s+1][r],g[1][s+1][r],g[2][s+1][r],g[3][s+1][r]],[g[0][s+1][r+1],g[1][s+1][r+1],g[2][s+1][r+1],g[3][s+1][r+1]]]])).paint(t,e)}}}transform(t){if(t instanceof x)for(let e=0,s=this.nodes.length;e<s;++e)for(let s=0,r=this.nodes[0].length;s<r;++s)this.nodes[e][s]=this.nodes[e][s].add(t);else if(t instanceof g)for(let e=0,s=this.nodes.length;e<s;++e)for(let s=0,r=this.nodes[0].length;s<r;++s)this.nodes[e][s]=this.nodes[e][s].transform(t)}scale(t){for(let e=0,s=this.nodes.length;e<s;++e)for(let s=0,r=this.nodes[0].length;s<r;++s)this.nodes[e][s]=this.nodes[e][s].scale(t)}}
+    const n=(t,e,s,r)=>{let n=new x(.5*(e.x+s.x),.5*(e.y+s.y)),o=new x(.5*(t.x+e.x),.5*(t.y+e.y)),i=new x(.5*(s.x+r.x),.5*(s.y+r.y)),a=new x(.5*(n.x+o.x),.5*(n.y+o.y)),h=new x(.5*(n.x+i.x),.5*(n.y+i.y)),l=new x(.5*(a.x+h.x),.5*(a.y+h.y));return[[t,o,a,l],[l,h,i,r]]},o=t=>{let e=t[0].distSquared(t[1]),s=t[2].distSquared(t[3]),r=.25*t[0].distSquared(t[2]),n=.25*t[1].distSquared(t[3]),o=e>s?e:s,i=r>n?r:n;return 18*(o>i?o:i)},i=(t,e)=>Math.sqrt(t.distSquared(e)),a=(t,e)=>t.scale(2/3).add(e.scale(1/3)),h=t=>{let e,s,r,n,o,i,a,h=new g;return t.match(/(\w+\(\s*[^)]+\))+/g).forEach(t=>{let l=t.match(/[\w.-]+/g),d=l.shift();switch(d){case"translate":2===l.length?e=new g(1,0,0,1,l[0],l[1]):(console.error("mesh.js: translate does not have 2 arguments!"),e=new g(1,0,0,1,0,0)),h=h.append(e);break;case"scale":1===l.length?s=new g(l[0],0,0,l[0],0,0):2===l.length?s=new g(l[0],0,0,l[1],0,0):(console.error("mesh.js: scale does not have 1 or 2 arguments!"),s=new g(1,0,0,1,0,0)),h=h.append(s);break;case"rotate":if(3===l.length&&(e=new g(1,0,0,1,l[1],l[2]),h=h.append(e)),l[0]){r=l[0]*Math.PI/180;let t=Math.cos(r),e=Math.sin(r);Math.abs(t)<1e-16&&(t=0),Math.abs(e)<1e-16&&(e=0),a=new g(t,e,-e,t,0,0),h=h.append(a)}else console.error("math.js: No argument to rotate transform!");3===l.length&&(e=new g(1,0,0,1,-l[1],-l[2]),h=h.append(e));break;case"skewX":l[0]?(r=l[0]*Math.PI/180,n=Math.tan(r),o=new g(1,0,n,1,0,0),h=h.append(o)):console.error("math.js: No argument to skewX transform!");break;case"skewY":l[0]?(r=l[0]*Math.PI/180,n=Math.tan(r),i=new g(1,n,0,1,0,0),h=h.append(i)):console.error("math.js: No argument to skewY transform!");break;case"matrix":6===l.length?h=h.append(new g(...l)):console.error("math.js: Incorrect number of arguments for matrix!");break;default:console.error("mesh.js: Unhandled transform type: "+d)}}),h},l=t=>{let e=[],s=t.split(/[ ,]+/);for(let t=0,r=s.length-1;t<r;t+=2)e.push(new x(parseFloat(s[t]),parseFloat(s[t+1])));return e},d=(t,e)=>{for(let s in e)t.setAttribute(s,e[s])},c=(t,e,s,r,n)=>{let o,i,a=[0,0,0,0];for(let h=0;h<3;++h)e[h]<t[h]&&e[h]<s[h]||t[h]<e[h]&&s[h]<e[h]?a[h]=0:(a[h]=.5*((e[h]-t[h])/r+(s[h]-e[h])/n),o=Math.abs(3*(e[h]-t[h])/r),i=Math.abs(3*(s[h]-e[h])/n),a[h]>o?a[h]=o:a[h]>i&&(a[h]=i));return a},u=[[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0],[-3,3,0,0,-2,-1,0,0,0,0,0,0,0,0,0,0],[2,-2,0,0,1,1,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0],[0,0,0,0,0,0,0,0,-3,3,0,0,-2,-1,0,0],[0,0,0,0,0,0,0,0,2,-2,0,0,1,1,0,0],[-3,0,3,0,0,0,0,0,-2,0,-1,0,0,0,0,0],[0,0,0,0,-3,0,3,0,0,0,0,0,-2,0,-1,0],[9,-9,-9,9,6,3,-6,-3,6,-6,3,-3,4,2,2,1],[-6,6,6,-6,-3,-3,3,3,-4,4,-2,2,-2,-2,-1,-1],[2,0,-2,0,0,0,0,0,1,0,1,0,0,0,0,0],[0,0,0,0,2,0,-2,0,0,0,0,0,1,0,1,0],[-6,6,6,-6,-4,-2,4,2,-3,3,-3,3,-2,-1,-2,-1],[4,-4,-4,4,2,2,-2,-2,2,-2,2,-2,1,1,1,1]],f=t=>{let e=[];for(let s=0;s<16;++s){e[s]=0;for(let r=0;r<16;++r)e[s]+=u[s][r]*t[r]}return e},p=(t,e,s)=>{const r=e*e,n=s*s,o=e*e*e,i=s*s*s;return t[0]+t[1]*e+t[2]*r+t[3]*o+t[4]*s+t[5]*s*e+t[6]*s*r+t[7]*s*o+t[8]*n+t[9]*n*e+t[10]*n*r+t[11]*n*o+t[12]*i+t[13]*i*e+t[14]*i*r+t[15]*i*o},y=t=>{let e=[],s=[],r=[];for(let s=0;s<4;++s)e[s]=[],e[s][0]=n(t[0][s],t[1][s],t[2][s],t[3][s]),e[s][1]=[],e[s][1].push(...n(...e[s][0][0])),e[s][1].push(...n(...e[s][0][1])),e[s][2]=[],e[s][2].push(...n(...e[s][1][0])),e[s][2].push(...n(...e[s][1][1])),e[s][2].push(...n(...e[s][1][2])),e[s][2].push(...n(...e[s][1][3]));for(let t=0;t<8;++t){s[t]=[];for(let r=0;r<4;++r)s[t][r]=[],s[t][r][0]=n(e[0][2][t][r],e[1][2][t][r],e[2][2][t][r],e[3][2][t][r]),s[t][r][1]=[],s[t][r][1].push(...n(...s[t][r][0][0])),s[t][r][1].push(...n(...s[t][r][0][1])),s[t][r][2]=[],s[t][r][2].push(...n(...s[t][r][1][0])),s[t][r][2].push(...n(...s[t][r][1][1])),s[t][r][2].push(...n(...s[t][r][1][2])),s[t][r][2].push(...n(...s[t][r][1][3]))}for(let t=0;t<8;++t){r[t]=[];for(let e=0;e<8;++e)r[t][e]=[],r[t][e][0]=s[t][0][2][e],r[t][e][1]=s[t][1][2][e],r[t][e][2]=s[t][2][2][e],r[t][e][3]=s[t][3][2][e]}return r};class x{constructor(t,e){this.x=t||0,this.y=e||0}toString(){return`(x=${this.x}, y=${this.y})`}clone(){return new x(this.x,this.y)}add(t){return new x(this.x+t.x,this.y+t.y)}scale(t){return void 0===t.x?new x(this.x*t,this.y*t):new x(this.x*t.x,this.y*t.y)}distSquared(t){let e=this.x-t.x,s=this.y-t.y;return e*e+s*s}transform(t){let e=this.x*t.a+this.y*t.c+t.e,s=this.x*t.b+this.y*t.d+t.f;return new x(e,s)}}class g{constructor(t,e,s,r,n,o){void 0===t?(this.a=1,this.b=0,this.c=0,this.d=1,this.e=0,this.f=0):(this.a=t,this.b=e,this.c=s,this.d=r,this.e=n,this.f=o)}toString(){return`affine: ${this.a} ${this.c} ${this.e} \n       ${this.b} ${this.d} ${this.f}`}append(t){let e=this.a*t.a+this.c*t.b,s=this.b*t.a+this.d*t.b,r=this.a*t.c+this.c*t.d,n=this.b*t.c+this.d*t.d,o=this.a*t.e+this.c*t.f+this.e,i=this.b*t.e+this.d*t.f+this.f;return new g(e,s,r,n,o,i)}}class w{constructor(t,e){this.nodes=t,this.colors=e}paintCurve(t,e){if(o(this.nodes)>r){const s=n(...this.nodes);let r=[[],[]],o=[[],[]];for(let t=0;t<4;++t)r[0][t]=this.colors[0][t],r[1][t]=(this.colors[0][t]+this.colors[1][t])/2,o[0][t]=r[1][t],o[1][t]=this.colors[1][t];let i=new w(s[0],r),a=new w(s[1],o);i.paintCurve(t,e),a.paintCurve(t,e)}else{let s=Math.round(this.nodes[0].x);if(s>=0&&s<e){let r=4*(~~this.nodes[0].y*e+s);t[r]=Math.round(this.colors[0][0]),t[r+1]=Math.round(this.colors[0][1]),t[r+2]=Math.round(this.colors[0][2]),t[r+3]=Math.round(this.colors[0][3])}}}}class m{constructor(t,e){this.nodes=t,this.colors=e}split(){let t=[[],[],[],[]],e=[[],[],[],[]],s=[[[],[]],[[],[]]],r=[[[],[]],[[],[]]];for(let s=0;s<4;++s){const r=n(this.nodes[0][s],this.nodes[1][s],this.nodes[2][s],this.nodes[3][s]);t[0][s]=r[0][0],t[1][s]=r[0][1],t[2][s]=r[0][2],t[3][s]=r[0][3],e[0][s]=r[1][0],e[1][s]=r[1][1],e[2][s]=r[1][2],e[3][s]=r[1][3]}for(let t=0;t<4;++t)s[0][0][t]=this.colors[0][0][t],s[0][1][t]=this.colors[0][1][t],s[1][0][t]=(this.colors[0][0][t]+this.colors[1][0][t])/2,s[1][1][t]=(this.colors[0][1][t]+this.colors[1][1][t])/2,r[0][0][t]=s[1][0][t],r[0][1][t]=s[1][1][t],r[1][0][t]=this.colors[1][0][t],r[1][1][t]=this.colors[1][1][t];return[new m(t,s),new m(e,r)]}paint(t,e){let s,n=!1;for(let t=0;t<4;++t)if((s=o([this.nodes[0][t],this.nodes[1][t],this.nodes[2][t],this.nodes[3][t]]))>r){n=!0;break}if(n){let s=this.split();s[0].paint(t,e),s[1].paint(t,e)}else{new w([...this.nodes[0]],[...this.colors[0]]).paintCurve(t,e)}}}class b{constructor(t){this.readMesh(t),this.type=t.getAttribute("type")||"bilinear"}readMesh(t){let e=[[]],s=[[]],r=Number(t.getAttribute("x")),n=Number(t.getAttribute("y"));e[0][0]=new x(r,n);let o=t.children;for(let t=0,r=o.length;t<r;++t){e[3*t+1]=[],e[3*t+2]=[],e[3*t+3]=[],s[t+1]=[];let r=o[t].children;for(let n=0,o=r.length;n<o;++n){let o=r[n].children;for(let r=0,i=o.length;r<i;++r){let i=r;0!==t&&++i;let h,d=o[r].getAttribute("path"),c="l";null!=d&&(c=(h=d.match(/\s*([lLcC])\s*(.*)/))[1]);let u=l(h[2]);switch(c){case"l":0===i?(e[3*t][3*n+3]=u[0].add(e[3*t][3*n]),e[3*t][3*n+1]=a(e[3*t][3*n],e[3*t][3*n+3]),e[3*t][3*n+2]=a(e[3*t][3*n+3],e[3*t][3*n])):1===i?(e[3*t+3][3*n+3]=u[0].add(e[3*t][3*n+3]),e[3*t+1][3*n+3]=a(e[3*t][3*n+3],e[3*t+3][3*n+3]),e[3*t+2][3*n+3]=a(e[3*t+3][3*n+3],e[3*t][3*n+3])):2===i?(0===n&&(e[3*t+3][3*n+0]=u[0].add(e[3*t+3][3*n+3])),e[3*t+3][3*n+1]=a(e[3*t+3][3*n],e[3*t+3][3*n+3]),e[3*t+3][3*n+2]=a(e[3*t+3][3*n+3],e[3*t+3][3*n])):(e[3*t+1][3*n]=a(e[3*t][3*n],e[3*t+3][3*n]),e[3*t+2][3*n]=a(e[3*t+3][3*n],e[3*t][3*n]));break;case"L":0===i?(e[3*t][3*n+3]=u[0],e[3*t][3*n+1]=a(e[3*t][3*n],e[3*t][3*n+3]),e[3*t][3*n+2]=a(e[3*t][3*n+3],e[3*t][3*n])):1===i?(e[3*t+3][3*n+3]=u[0],e[3*t+1][3*n+3]=a(e[3*t][3*n+3],e[3*t+3][3*n+3]),e[3*t+2][3*n+3]=a(e[3*t+3][3*n+3],e[3*t][3*n+3])):2===i?(0===n&&(e[3*t+3][3*n+0]=u[0]),e[3*t+3][3*n+1]=a(e[3*t+3][3*n],e[3*t+3][3*n+3]),e[3*t+3][3*n+2]=a(e[3*t+3][3*n+3],e[3*t+3][3*n])):(e[3*t+1][3*n]=a(e[3*t][3*n],e[3*t+3][3*n]),e[3*t+2][3*n]=a(e[3*t+3][3*n],e[3*t][3*n]));break;case"c":0===i?(e[3*t][3*n+1]=u[0].add(e[3*t][3*n]),e[3*t][3*n+2]=u[1].add(e[3*t][3*n]),e[3*t][3*n+3]=u[2].add(e[3*t][3*n])):1===i?(e[3*t+1][3*n+3]=u[0].add(e[3*t][3*n+3]),e[3*t+2][3*n+3]=u[1].add(e[3*t][3*n+3]),e[3*t+3][3*n+3]=u[2].add(e[3*t][3*n+3])):2===i?(e[3*t+3][3*n+2]=u[0].add(e[3*t+3][3*n+3]),e[3*t+3][3*n+1]=u[1].add(e[3*t+3][3*n+3]),0===n&&(e[3*t+3][3*n+0]=u[2].add(e[3*t+3][3*n+3]))):(e[3*t+2][3*n]=u[0].add(e[3*t+3][3*n]),e[3*t+1][3*n]=u[1].add(e[3*t+3][3*n]));break;case"C":0===i?(e[3*t][3*n+1]=u[0],e[3*t][3*n+2]=u[1],e[3*t][3*n+3]=u[2]):1===i?(e[3*t+1][3*n+3]=u[0],e[3*t+2][3*n+3]=u[1],e[3*t+3][3*n+3]=u[2]):2===i?(e[3*t+3][3*n+2]=u[0],e[3*t+3][3*n+1]=u[1],0===n&&(e[3*t+3][3*n+0]=u[2])):(e[3*t+2][3*n]=u[0],e[3*t+1][3*n]=u[1]);break;default:console.error("mesh.js: "+c+" invalid path type.")}if(0===t&&0===n||r>0){let e=window.getComputedStyle(o[r]).stopColor.match(/^rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/i),a=window.getComputedStyle(o[r]).stopOpacity,h=255;a&&(h=Math.floor(255*a)),e&&(0===i?(s[t][n]=[],s[t][n][0]=Math.floor(e[1]),s[t][n][1]=Math.floor(e[2]),s[t][n][2]=Math.floor(e[3]),s[t][n][3]=h):1===i?(s[t][n+1]=[],s[t][n+1][0]=Math.floor(e[1]),s[t][n+1][1]=Math.floor(e[2]),s[t][n+1][2]=Math.floor(e[3]),s[t][n+1][3]=h):2===i?(s[t+1][n+1]=[],s[t+1][n+1][0]=Math.floor(e[1]),s[t+1][n+1][1]=Math.floor(e[2]),s[t+1][n+1][2]=Math.floor(e[3]),s[t+1][n+1][3]=h):3===i&&(s[t+1][n]=[],s[t+1][n][0]=Math.floor(e[1]),s[t+1][n][1]=Math.floor(e[2]),s[t+1][n][2]=Math.floor(e[3]),s[t+1][n][3]=h))}}e[3*t+1][3*n+1]=new x,e[3*t+1][3*n+2]=new x,e[3*t+2][3*n+1]=new x,e[3*t+2][3*n+2]=new x,e[3*t+1][3*n+1].x=(-4*e[3*t][3*n].x+6*(e[3*t][3*n+1].x+e[3*t+1][3*n].x)+-2*(e[3*t][3*n+3].x+e[3*t+3][3*n].x)+3*(e[3*t+3][3*n+1].x+e[3*t+1][3*n+3].x)+-1*e[3*t+3][3*n+3].x)/9,e[3*t+1][3*n+2].x=(-4*e[3*t][3*n+3].x+6*(e[3*t][3*n+2].x+e[3*t+1][3*n+3].x)+-2*(e[3*t][3*n].x+e[3*t+3][3*n+3].x)+3*(e[3*t+3][3*n+2].x+e[3*t+1][3*n].x)+-1*e[3*t+3][3*n].x)/9,e[3*t+2][3*n+1].x=(-4*e[3*t+3][3*n].x+6*(e[3*t+3][3*n+1].x+e[3*t+2][3*n].x)+-2*(e[3*t+3][3*n+3].x+e[3*t][3*n].x)+3*(e[3*t][3*n+1].x+e[3*t+2][3*n+3].x)+-1*e[3*t][3*n+3].x)/9,e[3*t+2][3*n+2].x=(-4*e[3*t+3][3*n+3].x+6*(e[3*t+3][3*n+2].x+e[3*t+2][3*n+3].x)+-2*(e[3*t+3][3*n].x+e[3*t][3*n+3].x)+3*(e[3*t][3*n+2].x+e[3*t+2][3*n].x)+-1*e[3*t][3*n].x)/9,e[3*t+1][3*n+1].y=(-4*e[3*t][3*n].y+6*(e[3*t][3*n+1].y+e[3*t+1][3*n].y)+-2*(e[3*t][3*n+3].y+e[3*t+3][3*n].y)+3*(e[3*t+3][3*n+1].y+e[3*t+1][3*n+3].y)+-1*e[3*t+3][3*n+3].y)/9,e[3*t+1][3*n+2].y=(-4*e[3*t][3*n+3].y+6*(e[3*t][3*n+2].y+e[3*t+1][3*n+3].y)+-2*(e[3*t][3*n].y+e[3*t+3][3*n+3].y)+3*(e[3*t+3][3*n+2].y+e[3*t+1][3*n].y)+-1*e[3*t+3][3*n].y)/9,e[3*t+2][3*n+1].y=(-4*e[3*t+3][3*n].y+6*(e[3*t+3][3*n+1].y+e[3*t+2][3*n].y)+-2*(e[3*t+3][3*n+3].y+e[3*t][3*n].y)+3*(e[3*t][3*n+1].y+e[3*t+2][3*n+3].y)+-1*e[3*t][3*n+3].y)/9,e[3*t+2][3*n+2].y=(-4*e[3*t+3][3*n+3].y+6*(e[3*t+3][3*n+2].y+e[3*t+2][3*n+3].y)+-2*(e[3*t+3][3*n].y+e[3*t][3*n+3].y)+3*(e[3*t][3*n+2].y+e[3*t+2][3*n].y)+-1*e[3*t][3*n].y)/9}}this.nodes=e,this.colors=s}paintMesh(t,e){let s=(this.nodes.length-1)/3,r=(this.nodes[0].length-1)/3;if("bilinear"===this.type||s<2||r<2){let n;for(let o=0;o<s;++o)for(let s=0;s<r;++s){let r=[];for(let t=3*o,e=3*o+4;t<e;++t)r.push(this.nodes[t].slice(3*s,3*s+4));let i=[];i.push(this.colors[o].slice(s,s+2)),i.push(this.colors[o+1].slice(s,s+2)),(n=new m(r,i)).paint(t,e)}}else{let n,o,a,h,l,d,u;const x=s,g=r;s++,r++;let w=new Array(s);for(let t=0;t<s;++t){w[t]=new Array(r);for(let e=0;e<r;++e)w[t][e]=[],w[t][e][0]=this.nodes[3*t][3*e],w[t][e][1]=this.colors[t][e]}for(let t=0;t<s;++t)for(let e=0;e<r;++e)0!==t&&t!==x&&(n=i(w[t-1][e][0],w[t][e][0]),o=i(w[t+1][e][0],w[t][e][0]),w[t][e][2]=c(w[t-1][e][1],w[t][e][1],w[t+1][e][1],n,o)),0!==e&&e!==g&&(n=i(w[t][e-1][0],w[t][e][0]),o=i(w[t][e+1][0],w[t][e][0]),w[t][e][3]=c(w[t][e-1][1],w[t][e][1],w[t][e+1][1],n,o));for(let t=0;t<r;++t){w[0][t][2]=[],w[x][t][2]=[];for(let e=0;e<4;++e)n=i(w[1][t][0],w[0][t][0]),o=i(w[x][t][0],w[x-1][t][0]),w[0][t][2][e]=n>0?2*(w[1][t][1][e]-w[0][t][1][e])/n-w[1][t][2][e]:0,w[x][t][2][e]=o>0?2*(w[x][t][1][e]-w[x-1][t][1][e])/o-w[x-1][t][2][e]:0}for(let t=0;t<s;++t){w[t][0][3]=[],w[t][g][3]=[];for(let e=0;e<4;++e)n=i(w[t][1][0],w[t][0][0]),o=i(w[t][g][0],w[t][g-1][0]),w[t][0][3][e]=n>0?2*(w[t][1][1][e]-w[t][0][1][e])/n-w[t][1][3][e]:0,w[t][g][3][e]=o>0?2*(w[t][g][1][e]-w[t][g-1][1][e])/o-w[t][g-1][3][e]:0}for(let s=0;s<x;++s)for(let r=0;r<g;++r){let n=i(w[s][r][0],w[s+1][r][0]),o=i(w[s][r+1][0],w[s+1][r+1][0]),c=i(w[s][r][0],w[s][r+1][0]),x=i(w[s+1][r][0],w[s+1][r+1][0]),g=[[],[],[],[]];for(let t=0;t<4;++t){(d=[])[0]=w[s][r][1][t],d[1]=w[s+1][r][1][t],d[2]=w[s][r+1][1][t],d[3]=w[s+1][r+1][1][t],d[4]=w[s][r][2][t]*n,d[5]=w[s+1][r][2][t]*n,d[6]=w[s][r+1][2][t]*o,d[7]=w[s+1][r+1][2][t]*o,d[8]=w[s][r][3][t]*c,d[9]=w[s+1][r][3][t]*x,d[10]=w[s][r+1][3][t]*c,d[11]=w[s+1][r+1][3][t]*x,d[12]=0,d[13]=0,d[14]=0,d[15]=0,u=f(d);for(let e=0;e<9;++e){g[t][e]=[];for(let s=0;s<9;++s)g[t][e][s]=p(u,e/8,s/8),g[t][e][s]>255?g[t][e][s]=255:g[t][e][s]<0&&(g[t][e][s]=0)}}h=[];for(let t=3*s,e=3*s+4;t<e;++t)h.push(this.nodes[t].slice(3*r,3*r+4));l=y(h);for(let s=0;s<8;++s)for(let r=0;r<8;++r)(a=new m(l[s][r],[[[g[0][s][r],g[1][s][r],g[2][s][r],g[3][s][r]],[g[0][s][r+1],g[1][s][r+1],g[2][s][r+1],g[3][s][r+1]]],[[g[0][s+1][r],g[1][s+1][r],g[2][s+1][r],g[3][s+1][r]],[g[0][s+1][r+1],g[1][s+1][r+1],g[2][s+1][r+1],g[3][s+1][r+1]]]])).paint(t,e)}}}transform(t){if(t instanceof x)for(let e=0,s=this.nodes.length;e<s;++e)for(let s=0,r=this.nodes[0].length;s<r;++s)this.nodes[e][s]=this.nodes[e][s].add(t);else if(t instanceof g)for(let e=0,s=this.nodes.length;e<s;++e)for(let s=0,r=this.nodes[0].length;s<r;++s)this.nodes[e][s]=this.nodes[e][s].transform(t)}scale(t){for(let e=0,s=this.nodes.length;e<s;++e)for(let s=0,r=this.nodes[0].length;s<r;++s)this.nodes[e][s]=this.nodes[e][s].scale(t)}}
+    
+    root.querySelectorAll("rect,circle,ellipse,path,text").forEach((el,n)=>{
+        let o=el.getAttribute("id");
+        o||(o="patchjs_shape"+n,el.setAttribute("id",o));
         
-        root.querySelectorAll("rect,circle,ellipse,path,text").forEach((el,n)=>{
-            let o=el.getAttribute("id");
-            o||(o="patchjs_shape"+n,el.setAttribute("id",o));
-            
-            const fillMatch = el.style.fill ? el.style.fill.match(/^url\(\s*"?\s*#([^\s"]+)"?\s*\)/) : null;
-            const attrFillMatch = el.getAttribute('fill') ? el.getAttribute('fill').match(/^url\(\s*"?\s*#([^\s"]+)"?\s*\)/) : null;
-            const validFillMatch = fillMatch || attrFillMatch;
+        const fillMatch = el.style.fill ? el.style.fill.match(/^url\(\s*"?\s*#([^\s"]+)"?\s*\)/) : null;
+        const attrFillMatch = el.getAttribute('fill') ? el.getAttribute('fill').match(/^url\(\s*"?\s*#([^\s"]+)"?\s*\)/) : null;
+        const validFillMatch = fillMatch || attrFillMatch;
 
-            if(validFillMatch && validFillMatch[1]){
-              const gradNode=root.querySelector('#'+validFillMatch[1]);
-              if(gradNode&&"meshgradient"===gradNode.nodeName.toLowerCase()){
-                const bbox=el.getBBox();
-                if (bbox.width === 0 || bbox.height === 0) return; 
-                
-                let canvas=document.createElementNS(s,"canvas");
-                d(canvas,{width:bbox.width,height:bbox.height});
-                const ctx=canvas.getContext("2d");
-                let imgData=ctx.createImageData(bbox.width,bbox.height);
-                const mesh=new b(gradNode);
-                "objectBoundingBox"===gradNode.getAttribute("gradientUnits")&&mesh.scale(new x(bbox.width,bbox.height));
-                const trans=gradNode.getAttribute("gradientTransform");
-                null!=trans&&mesh.transform(h(trans));
-                "userSpaceOnUse"===gradNode.getAttribute("gradientUnits")&&mesh.transform(new x(-bbox.x,-bbox.y));
-                mesh.paintMesh(imgData.data,canvas.width);
-                ctx.putImageData(imgData,0,0);
-                
-                const img=document.createElementNS(t,"image");
-                d(img,{width:bbox.width,height:bbox.height,x:bbox.x,y:bbox.y});
-                let dataUrl=canvas.toDataURL();
-                img.setAttributeNS(e,"href",dataUrl); 
-                
-                el.parentNode.insertBefore(img,el);
-                if(el.style.fill) el.style.fill="none";
-                if(el.getAttribute('fill')) el.setAttribute('fill', 'none');
-                
-                const useEl=document.createElementNS(t,"use");
-                useEl.setAttributeNS(e,"href","#"+o);
-                const clipId="patchjs_clip_"+n+"_"+Math.random().toString(36).substr(2, 9);
-                const clipPath=document.createElementNS(t,"clipPath");
-                clipPath.setAttribute("id",clipId);
-                clipPath.appendChild(useEl);
-                el.parentElement.insertBefore(clipPath,el);
-                img.setAttribute("clip-path","url(#"+clipId+")");
-              }
+        if(validFillMatch && validFillMatch[1]){
+          const gradNode=root.querySelector('#'+validFillMatch[1]);
+          if(gradNode&&"meshgradient"===gradNode.nodeName.toLowerCase()){
+            try {
+              const bbox=el.getBBox();
+              if (bbox.width === 0 || bbox.height === 0) return; 
+              
+              let canvas=document.createElementNS(s,"canvas");
+              d(canvas,{width:bbox.width,height:bbox.height});
+              const ctx=canvas.getContext("2d");
+              let imgData=ctx.createImageData(bbox.width,bbox.height);
+              const mesh=new b(gradNode);
+              "objectBoundingBox"===gradNode.getAttribute("gradientUnits")&&mesh.scale(new x(bbox.width,bbox.height));
+              const trans=gradNode.getAttribute("gradientTransform");
+              null!=trans&&mesh.transform(h(trans));
+              "userSpaceOnUse"===gradNode.getAttribute("gradientUnits")&&mesh.transform(new x(-bbox.x,-bbox.y));
+              mesh.paintMesh(imgData.data,canvas.width);
+              ctx.putImageData(imgData,0,0);
+              
+              const img=document.createElementNS(t,"image");
+              d(img,{width:bbox.width,height:bbox.height,x:bbox.x,y:bbox.y});
+              let dataUrl=canvas.toDataURL();
+              img.setAttributeNS(e,"href",dataUrl); 
+              
+              el.parentNode.insertBefore(img,el);
+              if(el.style.fill) el.style.fill="none";
+              if(el.getAttribute('fill')) el.setAttribute('fill', 'none');
+              
+              const useEl=document.createElementNS(t,"use");
+              useEl.setAttributeNS(e,"href","#"+o);
+              const clipId="patchjs_clip_"+n+"_"+Math.random().toString(36).substr(2, 9);
+              const clipPath=document.createElementNS(t,"clipPath");
+              clipPath.setAttribute("id",clipId);
+              clipPath.appendChild(useEl);
+              el.parentElement.insertBefore(clipPath,el);
+              img.setAttribute("clip-path","url(#"+clipId+")");
+            } catch(err) {
+              console.warn("Mesh gradient polyfill skipped for", el, err);
             }
-        });
-      }
-
-      initGlados() {
-        const root = this.shadowRoot;
-        const config = this.config;
-
-        const el = {
-          svg: root.getElementById('glados-svg'),
-          head: root.getElementById('glados-head'),
-          bodyPivot: root.getElementById('body-pivot'),
-          eyeLayerIdle: root.getElementById('eye-layer-idle'),
-          eyeLayerListen: root.getElementById('eye-layer-listen'),
-          eyeLayerProcess: root.getElementById('eye-layer-process'),
-          eyeLayerRespond: root.getElementById('eye-layer-respond'),
-          eyeLayerDance: root.getElementById('eye-layer-dance'),
-          eyeHalo: root.getElementById('eye-halo'),
-          eyeCenter: root.getElementById('eye-center'),
-          pupil: root.getElementById('eye-pupil'),
-          eyeball: root.getElementById('eyeball-assembly'),
-          bellows: root.getElementById('bellows'),
-          lidTop: root.getElementById('eye-lid'),
-          lidBot: root.getElementById('eye-lid-bottom'),
-          dangerRing: root.getElementById('danger-ring'),
-          ledMatrices: root.querySelectorAll('.led-matrix')
-        };
-
-        let stateNow = 'idle';
-        let currentBaseLid = 0;
-
-        function setHead(rot, tx, ty, scale = 1.0, dur, ease = "cubic-bezier(0.34,1.06,0.64,1)") {
-          el.head.style.transition = `transform ${dur}s ${ease}`;
-          el.head.style.transform = `rotate(${rot}deg) translate(${tx}px,${ty}px) scale(${scale})`;
-        }
-        function setBodySwivel(rot, sx, dur) {
-          el.bodyPivot.style.transition = `transform ${dur || 2.0}s cubic-bezier(0.45,0.05,0.55,0.95)`;
-          el.bodyPivot.style.animation = 'none';
-          el.bodyPivot.style.transform = `rotate(${rot}deg) scaleX(${sx || 1})`;
-        }
-        function resetBodySwivel() {
-          el.bodyPivot.style.transition = '';
-          el.bodyPivot.style.animation = '';
-          el.bodyPivot.style.transform = '';
-        }
-        function setLid(amount, dur = 0.7) {
-          const px = amount * 17; 
-          el.lidTop.style.transition = `transform ${dur}s ease-in-out`;
-          el.lidBot.style.transition = `transform ${dur}s ease-in-out`;
-          el.lidTop.style.transform = `translateY(${px}px)`;
-          el.lidBot.style.transform = `translateY(${-px}px)`;
-        }
-        function setBaseLid(amount, dur = 0.7) {
-          currentBaseLid = amount;
-          setLid(amount, dur);
-        }
-        function setPupil(px, py) {
-          el.pupil.style.transform = `translate(${px}px, ${py}px)`;
-          let ey = py * 1.5;
-          el.eyeball.style.transform = `translateY(${ey}px)`;
-          el.bellows.style.transform = `translateY(${ey}px)`;
-        }
-        function setLEDs(color, opacity) {
-          el.svg.style.setProperty('--led-color', color);
-          el.svg.style.setProperty('--led-opacity', opacity);
-        }
-
-        this.lidTimer = null;
-        this.idleTimer = null;
-        this.pupilTimer = null;
-        this.glitchRaf = null;
-        this.danceTimer = null;
-        this.danceLedTimer = null;
-        this.talkAnim = null;
-        this.respondTimer = null;
-
-        const startLidBehavior = () => {
-          if (this.lidTimer) clearTimeout(this.lidTimer);
-          const loop = () => {
-            if (stateNow === 'idle') {
-              let val = Math.max(0, Math.min(1, currentBaseLid + (Math.random() - 0.5) * 0.15));
-              setLid(val, 0.5 + Math.random() * 0.8);
-              this.lidTimer = setTimeout(loop, 1500 + Math.random() * 2500);
-            } else if (stateNow === 'processing') {
-              let val = 0.5 + (Math.random() * 0.35); 
-              setLid(val, 0.04 + Math.random() * 0.08);
-              this.lidTimer = setTimeout(loop, 40 + Math.random() * 120);
-            }
-          };
-          loop();
-        };
-
-        const stopLidBehavior = () => {
-          if (this.lidTimer) { clearTimeout(this.lidTimer); this.lidTimer = null; }
-        };
-
-        const IDLE_BEHAVIORS = [
-          { name: 'passive', exec() { setHead(0, 0, 0, 1.0, 2.4); setBaseLid(0, 1.0); resetBodySwivel(); }, min: 6000, max: 13000, weight: 4 },
-          { name: 'scan_right', exec() { setHead(12, 0, -5, 0.98, 1.4); setBaseLid(0, 1.0); setBodySwivel(-2, 1, 1.8); }, min: 3500, max: 7000, weight: 1.5 },
-          { name: 'scan_left', exec() { setHead(-12, 0, -5, 0.98, 1.4); setBaseLid(0, 1.0); setBodySwivel(2, 1, 1.8); }, min: 3500, max: 7000, weight: 1.5 },
-          { name: 'curious', exec() { setHead(8, 0, -20, 1.05, 1.2); setBaseLid(0, 0.8); setBodySwivel(-2, 1, 1.6); }, min: 4000, max: 8000, weight: 2 },
-          { name: 'contemptuous', exec() { setHead(-6, 0, 15, 0.95, 1.8); setBaseLid(0.65, 1.0); setBodySwivel(1.5, 1, 2.0); setTimeout(() => { if (stateNow === 'idle') setBaseLid(0, 1.5); }, 1500); }, min: 5000, max: 10000, weight: 2 },
-          { name: 'alert', exec() { setHead(0, 0, -25, 1.08, 0.28); setBaseLid(0, 0.2); setBodySwivel(-1, 1, 0.4); }, min: 1500, max: 3000, weight: 1 },
-          { name: 'bored', exec() { setHead(2, 0, 20, 0.96, 2.8); setBaseLid(0.7, 1.5); setBodySwivel(1, 1, 3.0); setTimeout(() => { if (stateNow === 'idle') setBaseLid(0, 1.5); }, 1500); }, min: 7000, max: 14000, weight: 1.5 },
-          { name: 'full_swivel', exec() { setBodySwivel(-6, 0.96, 2.5); setTimeout(() => { setHead(6, 0, -3, 1.02, 1.2); setBaseLid(0, 0.8); }, 600); }, min: 4000, max: 8000, weight: 0.8 },
-          { name: 'glitch', exec: () => {
-              let count = 0, lastTime = 0;
-              if (this.glitchRaf) cancelAnimationFrame(this.glitchRaf);
-              const glitchLoop = (timestamp) => {
-                if (!lastTime) lastTime = timestamp;
-                if (timestamp - lastTime > 60) {
-                  lastTime = timestamp;
-                  if (stateNow !== 'idle' || count > 12) {
-                    cancelAnimationFrame(this.glitchRaf); this.glitchRaf = null;
-                    if (stateNow === 'idle') {
-                      el.eyeHalo.setAttribute('fill', '#330800'); el.eyeCenter.setAttribute('fill', '#ffcc00'); setHead(0, 0, 0, 1.0, 0.4);
-                    }
-                    return;
-                  }
-                  setHead((Math.random()-0.5)*10, (Math.random()-0.5)*8, (Math.random()-0.5)*8, 1.0, 0.05, "linear");
-                  if (count % 2 === 0) { el.eyeHalo.setAttribute('fill', '#110000'); el.eyeCenter.setAttribute('fill', '#884400'); } 
-                  else { el.eyeHalo.setAttribute('fill', '#ffb800'); el.eyeCenter.setAttribute('fill', '#ffffff'); }
-                  count++;
-                }
-                this.glitchRaf = requestAnimationFrame(glitchLoop);
-              };
-              this.glitchRaf = requestAnimationFrame(glitchLoop);
-          }, min: 4000, max: 7000, weight: 0.3 }
-        ];
-
-        const dartPupil = () => {
-          if (stateNow === 'idle') {
-            const max = 7;
-            setPupil((Math.random() - 0.5) * max * 2, (Math.random() - 0.5) * max * 2);
-            this.pupilTimer = setTimeout(dartPupil, 600 + Math.random() * 2500);
           }
-        };
-
-        const runNextIdleBehavior = () => {
-          if (stateNow !== 'idle') return;
-          let r = Math.random() * IDLE_BEHAVIORS.reduce((s, b) => s + b.weight, 0), chosen = IDLE_BEHAVIORS[0];
-          for (const b of IDLE_BEHAVIORS) { r -= b.weight; if (r <= 0) { chosen = b; break; } }
-          chosen.exec();
-          this.idleTimer = setTimeout(runNextIdleBehavior, chosen.min + Math.random() * (chosen.max - chosen.min));
-        };
-
-        this.startIdleCycle = () => {
-          this.stopIdleCycle();
-          dartPupil();
-          this.idleTimer = setTimeout(runNextIdleBehavior, 2000 + Math.random() * 3000);
-        };
-
-        this.stopIdleCycle = () => {
-          if (this.idleTimer) { clearTimeout(this.idleTimer); this.idleTimer = null; }
-          if (this.pupilTimer) { clearTimeout(this.pupilTimer); this.pupilTimer = null; }
-          if (this.glitchRaf) { cancelAnimationFrame(this.glitchRaf); this.glitchRaf = null; }
-        };
-
-        this.stopDanceCycle = () => {
-          if (this.danceTimer) { clearTimeout(this.danceTimer); this.danceTimer = null; }
-          if (this.danceLedTimer) { clearTimeout(this.danceLedTimer); this.danceLedTimer = null; }
-        };
-
-        this.startDanceCycle = (bpm) => {
-          this.stopDanceCycle();
-          let dancePhase = 0; 
-          let currentRoutine = Math.floor(Math.random() * 8);
-          
-          const currentBpm = Math.max(60, Math.min(200, bpm)); 
-          const beatMs = (60 / currentBpm) * 1000;
-          const beatSec = beatMs / 1000;
-          
-          let expectedNextTick = performance.now() + beatMs;
-
-          const step = () => {
-            if (stateNow !== 'dancing') return;
-
-            if (dancePhase > 0 && dancePhase % 16 === 0) {
-                let nextRoutine;
-                do { nextRoutine = Math.floor(Math.random() * 8); } while (nextRoutine === currentRoutine);
-                currentRoutine = nextRoutine;
-            }
-
-            const choreoBlock = currentRoutine; 
-            const isDownBeat = dancePhase % 2 === 0;
-            const isQuadBeat = dancePhase % 4 === 0;
-            const phaseMod4 = dancePhase % 4;
-            const phaseMod8 = dancePhase % 8;
-            let dirX = isDownBeat ? 1 : -1;
-
-            setLEDs('#1DB954', '1'); 
-            el.eyeHalo.style.opacity = (choreoBlock === 7) ? '0.8' : '0.5'; 
-            el.eyeCenter.style.transform = 'scale(1.2)';
-
-            if (this.danceLedTimer) clearTimeout(this.danceLedTimer);
-            this.danceLedTimer = setTimeout(() => {
-              if (stateNow === 'dancing') {
-                setLEDs('#1DB954', '0.15'); 
-                el.eyeHalo.style.opacity = '0.05'; 
-                el.eyeCenter.style.transform = 'scale(1)'; 
-              }
-            }, beatMs * 0.3);
-
-            let r = 0, tx = 0, ty = 0, s = 1.0, lid = 0.0, ease = "ease-in-out";
-            let moveDur = beatSec;
-            let bodyDur = beatSec * 2;
-
-            if (currentBpm < 90) {
-               moveDur = beatSec * 2; bodyDur = beatSec * 4; ease = "ease-in-out"; lid = 0.4;
-               if (choreoBlock === 0) { r = isQuadBeat ? 8 : -8; tx = isQuadBeat ? 5 : -5; ty = 2; }
-               else if (choreoBlock === 1) { r = 0; tx = 0; ty = isQuadBeat ? 15 : -5; }
-               else if (choreoBlock === 2) { r = Math.sin(dancePhase * Math.PI / 2) * 6; tx = Math.sin(dancePhase * Math.PI / 2) * 5; ty = Math.cos(dancePhase * Math.PI / 4) * 8 + 4; }
-               else if (choreoBlock === 3) { r = (phaseMod8 < 4) ? 10 : -10; tx = (phaseMod8 < 4) ? 4 : -4; ty = 5; }
-               else if (choreoBlock === 4) { r = Math.sin(dancePhase * Math.PI / 4) * 12; tx = 0; ty = 0; }
-               else if (choreoBlock === 5) { r = isQuadBeat ? 4 : -4; tx = 0; ty = isQuadBeat ? 12 : 2; s = isQuadBeat ? 1.03 : 1.0; }
-               else if (choreoBlock === 6) { r = (phaseMod8 === 0) ? 12 : (phaseMod8 === 4) ? -6 : 0; tx = r * 0.5; ty = 8; }
-               else { r = 0; tx = 0; ty = 2; s = 1.05; lid = 0.5 + Math.sin(dancePhase * Math.PI / 2) * 0.3; }
-               if (!isDownBeat) return executeTick(); 
-
-            } else if (currentBpm < 125) {
-               moveDur = beatSec * 0.8; ease = "cubic-bezier(0.34, 1.06, 0.64, 1)"; lid = 0.2;
-               if (choreoBlock === 0) { r = isDownBeat ? 7 : -7; ty = isDownBeat ? 8 : -2; s = isDownBeat ? 1.02 : 1.0; }
-               else if (choreoBlock === 1) { const side = (phaseMod4 < 2) ? 1 : -1; r = side * 8; tx = side * 4; ty = isDownBeat ? 10 : 2; }
-               else if (choreoBlock === 2) { r = (phaseMod4 === 0) ? 10 : (phaseMod4 === 2) ? -10 : 0; ty = (phaseMod4 === 1 || phaseMod4 === 3) ? 12 : 0; ease = "ease-in-out"; }
-               else if (choreoBlock === 3) { r = [10, 5, -10, -5][phaseMod4]; ty = [0, 8, 0, 8][phaseMod4]; }
-               else if (choreoBlock === 4) { r = 0; tx = isDownBeat ? 8 : -8; ty = 4; }
-               else if (choreoBlock === 5) { r = isDownBeat ? 10 : -10; tx = isDownBeat ? 5 : -5; ty = isDownBeat ? 10 : -5; }
-               else if (choreoBlock === 6) { r = dirX * 6; ty = !isDownBeat ? 14 : 0; s = !isDownBeat ? 1.04 : 1.0; }
-               else { const side = (dancePhase % 3 === 0) ? -1 : 1; r = side * 8; ty = isDownBeat ? 8 : 0; }
-
-            } else if (currentBpm < 160) {
-               moveDur = beatSec * 0.6; ease = "cubic-bezier(0.25, 0.8, 0.25, 1)"; lid = isDownBeat ? 0.1 : 0.0;
-               if (choreoBlock === 0) { r = isDownBeat ? 12 : -12; tx = isDownBeat ? 6 : -6; ty = isDownBeat ? 10 : -8; s = 1.03; }
-               else if (choreoBlock === 1) { r = 0; tx = [8, 0, -8, 0][phaseMod4]; ty = isDownBeat ? 5 : -5; if (phaseMod4 === 3) lid = 0.6; }
-               else if (choreoBlock === 2) { r = isDownBeat ? 5 : -5; ty = isDownBeat ? 5 : -2; s = 1.0 + (phaseMod4 * 0.03); lid = 0.4 - (phaseMod4 * 0.1); }
-               else if (choreoBlock === 3) { r = isDownBeat ? 15 : -15; tx = isDownBeat ? 5 : -5; ty = 8; }
-               else if (choreoBlock === 4) { r = [10, 10, -10, -10][phaseMod4]; tx = [5, 5, -5, -5][phaseMod4]; ty = [8, -2, 8, -2][phaseMod4]; }
-               else if (choreoBlock === 5) { r = dirX * 10; ty = isDownBeat ? 12 : 4; s = 1.02; moveDur = beatSec * 0.4; ease="linear"; }
-               else if (choreoBlock === 6) { r = (phaseMod4 === 1 || phaseMod4 === 3) ? 0 : (phaseMod4 === 0 ? 12 : -12); ty = (phaseMod4 === 1 || phaseMod4 === 3) ? 14 : -2; }
-               else { r = isDownBeat ? 12 : 12; tx = isDownBeat ? 8 : 8; ty = isDownBeat ? 8 : -4; if (isDownBeat) moveDur = beatSec * 0.1; else moveDur = beatSec * 0.8; }
-               if (isDownBeat && choreoBlock !== 2) setPupil((Math.random()-0.5)*8, (Math.random()-0.5)*6);
-
-            } else {
-               moveDur = beatSec * 0.8; ease = "linear"; lid = isQuadBeat ? 0.4 : 0.0; 
-               if (choreoBlock === 0) { r = 0; tx = 0; ty = isDownBeat ? 20 : -10; s = isDownBeat ? 1.08 : 0.95; ease = "ease-out"; }
-               else if (choreoBlock === 1) { r = (Math.random() - 0.5) * 30; tx = (Math.random() - 0.5) * 15; ty = (Math.random() - 0.5) * 15; moveDur = beatSec * 0.5; }
-               else if (choreoBlock === 2) { r = isDownBeat ? 18 : -18; tx = isDownBeat ? 10 : -10; ty = 12; }
-               else if (choreoBlock === 3) { r = isDownBeat ? 10 : -10; tx = (Math.random() - 0.5) * 20; ty = 15; s = 1.1; el.eyeHalo.style.opacity = '0.8'; }
-               else if (choreoBlock === 4) { r = isDownBeat ? 25 : -25; tx = isDownBeat ? 15 : -15; ty = isDownBeat ? 15 : -15; }
-               else if (choreoBlock === 5) { r = 0; tx = 0; ty = isDownBeat ? 12 : 2; moveDur = beatSec * 0.3;  }
-               else if (choreoBlock === 6) { r = Math.sin(dancePhase * Math.PI) * 20; tx = Math.sin(dancePhase * Math.PI) * 12; ty = Math.cos(dancePhase * Math.PI / 2) * 15 + 5; }
-               else { if (phaseMod4 === 0) { r=15; ty=10; s=1.1; moveDur = beatSec * 0.1; } else { r=15; ty=10; s=1.1; moveDur = beatSec * 1.5; } el.eyeCenter.setAttribute('fill', (dancePhase%2===0)?'#ff0000':'#ffffff'); }
-               setPupil((Math.random()-0.5)*15, (Math.random()-0.5)*15);
-            }
-            
-            setHead(r, tx, ty, s, moveDur, ease);
-            setBodySwivel(r * -0.8, 1, bodyDur);
-            setBaseLid(lid, beatSec * 0.5);
-
-            const executeTick = () => {
-              dancePhase++;
-              const now = performance.now();
-              expectedNextTick += beatMs;
-              const delay = Math.max(0, expectedNextTick - now);
-              this.danceTimer = setTimeout(step, delay);
-            };
-            executeTick();
-          };
-          
-          step();
-        };
-
-        const TALK_MOVES = [
-          { r: -10, tx: -8, ty: -18, s: 1.02, dur: 1.8, lid: 0.1, px: 0, py: -2 },
-          { r: 4, tx: 0, ty: 16, s: 1.08, dur: 1.2, lid: 0.85, px: 0, py: 4 },
-          { r: 2, tx: 0, ty: 10, s: 1.04, dur: 1.0, lid: 0.5, px: 0, py: 2 },
-          { r: 12, tx: 10, ty: -12, s: 0.96, dur: 2.2, lid: 0.1, px: 0, py: -1 },
-          { r: 0, tx: 0, ty: 25, s: 1.10, dur: 1.8, lid: 0.9, px: 0, py: 5 },
-          { r: -6, tx: 6, ty: -22, s: 0.98, dur: 1.0, lid: 0.1, px: 0, py: -3 },
-          { r: 4, tx: -3, ty: 6, s: 1.03, dur: 2.0, lid: 0.4, px: 0, py: 1 },
-          { r: -3, tx: 0, ty: 22, s: 1.15, dur: 1.2, lid: 0.95, px: 0, py: 6 },
-          { r: 6, tx: 3, ty: -6, s: 1.0, dur: 1.5, lid: 0.2, px: 0, py: 0 },
-        ];
-
-        const startTalkAnim = () => {
-          if (this.talkAnim) clearTimeout(this.talkAnim);
-          let talkPhase = 0;
-          const step = () => {
-            const m = TALK_MOVES[talkPhase % TALK_MOVES.length];
-            setHead(m.r, m.tx, m.ty, m.s, m.dur, "ease-in-out");
-            setLid(m.lid, m.dur);
-            setPupil(m.px, m.py);
-            setBodySwivel(m.r * -0.6, 1, m.dur); 
-            talkPhase++;
-            this.talkAnim = setTimeout(step, m.dur * 1000);
-          };
-          step();
-        };
-
-        const animateGlaDOS = (state, bpm) => {
-          stateNow = state;
-          if (this.talkAnim) clearTimeout(this.talkAnim);
-          stopLidBehavior();
-          this.stopIdleCycle();
-          this.stopDanceCycle();
-
-          el.ledMatrices.forEach(m => m.classList.remove('pulsing'));
-          if (el.dangerRing) el.dangerRing.setAttribute('opacity', '0');
-
-          el.eyeLayerIdle.style.opacity = '0'; 
-          el.eyeLayerListen.style.opacity = '0'; 
-          el.eyeLayerProcess.style.opacity = '0'; 
-          el.eyeLayerRespond.style.opacity = '0';
-          el.eyeLayerDance.style.opacity = '0';
-          el.eyeCenter.style.transform = 'scale(1)';
-          el.eyeCenter.style.transition = 'fill 0.8s ease-in-out';
-
-          if (state === 'idle') {
-            el.eyeLayerIdle.style.opacity = '1';
-            el.eyeHalo.style.transition = 'fill 0.8s ease-in-out, opacity 0.8s'; 
-            el.eyeHalo.setAttribute('fill', '#330800'); 
-            el.eyeHalo.style.opacity = '0.05';
-            el.eyeCenter.setAttribute('fill', '#ffcc00');
-            setHead(0, 0, 0, 1.0, 2.2); setLid(0, 1.2); setPupil(0, 0); currentBaseLid = 0;
-            setLEDs('#ffb800', '0.15');
-            resetBodySwivel();
-            startLidBehavior();
-            this.startIdleCycle();
-            
-          } else if (state === 'dancing') {
-            el.eyeLayerDance.style.opacity = '1';
-            el.eyeHalo.style.transition = 'fill 0.8s ease-in-out, opacity 0.15s ease-out';
-            el.eyeHalo.setAttribute('fill', '#1DB954'); 
-            el.eyeCenter.setAttribute('fill', '#ffffff'); 
-            el.eyeCenter.style.transformOrigin = '130px 364px';
-            el.eyeCenter.style.transition = 'transform 0.1s ease-out, fill 0.8s ease-in-out';
-
-            setLEDs('#1DB954', '0.15'); 
-            resetBodySwivel();
-            this.startDanceCycle(bpm);
-            
-          } else if (state === 'listening') {
-            el.eyeLayerListen.style.opacity = '1';
-            el.eyeHalo.style.transition = 'fill 0.8s ease-in-out, opacity 0.8s';
-            el.eyeHalo.setAttribute('fill', '#00ccff'); 
-            el.eyeHalo.style.opacity = '0.05';
-            el.eyeCenter.setAttribute('fill', '#aaffff');
-            setHead(4, 0, -8, 1.06, 1.0); setBaseLid(0.1, 0.4); setPupil(0, -3);
-            setLEDs('#00ccff', '1');
-            setBodySwivel(-2, 1, 1.4);
-            
-          } else if (state === 'processing') {
-            el.eyeLayerProcess.style.opacity = '1';
-            el.eyeHalo.style.transition = 'fill 0.8s ease-in-out, opacity 0.8s';
-            el.eyeHalo.setAttribute('fill', '#ff6600'); 
-            el.eyeHalo.style.opacity = '0.05';
-            el.eyeCenter.setAttribute('fill', '#ffddaa');
-            setHead(-2, 0, 10, 0.96, 1.4); setBaseLid(0.65, 0.5); 
-            setLEDs('#ff6600', '1');
-            setBodySwivel(1, 0.98, 1.8);
-            el.ledMatrices.forEach(m => m.classList.add('pulsing'));
-            startLidBehavior();
-            const dart = () => {
-              if (stateNow !== 'processing') return;
-              setPupil((Math.random() - 0.5) * 12, 4);
-              this.pupilTimer = setTimeout(dart, 200 + Math.random() * 600);
-            };
-            dart();
-            
-          } else if (state === 'responding') {
-            el.eyeLayerRespond.style.opacity = '1';
-            el.eyeHalo.style.transition = 'fill 0.8s ease-in-out, opacity 0.8s';
-            el.eyeHalo.setAttribute('fill', '#ff2200'); 
-            el.eyeHalo.style.opacity = '0.05';
-            el.eyeCenter.setAttribute('fill', '#ffaaaa');
-            if(el.dangerRing) el.dangerRing.setAttribute('opacity', '1');
-            setLEDs('#ff2200', '1');
-            setBodySwivel(0, 1, 0.8);
-            startTalkAnim();
-          }
-        };
-
-        this.applyState = (raw, bpm) => {
-          const s = (raw || 'idle').toLowerCase();
-          let mapped = 'idle';
-          if (s.includes('respond') || s.includes('speak') || s.includes('tts')) mapped = 'responding';
-          else if (s.includes('listen') || s.includes('wake')) mapped = 'listening';
-          else if (s.includes('process') || s.includes('think')) mapped = 'processing';
-          else if (s === 'dancing') mapped = 'dancing';
-
-          if (this.respondTimer) {
-            clearTimeout(this.respondTimer);
-            this.respondTimer = null;
-          }
-
-          const delaySeconds = config.respond_delay !== undefined ? parseFloat(config.respond_delay) : 0;
-
-          if (mapped === 'responding' && this._lastEffectiveState !== 'responding' && delaySeconds > 0) {
-            this.respondTimer = setTimeout(() => {
-              this._lastEffectiveState = 'responding';
-              animateGlaDOS('responding', bpm);
-            }, delaySeconds * 1000);
-            return; 
-          }
-
-          this._lastEffectiveState = mapped;
-          animateGlaDOS(mapped, bpm);
-        };
-
-        this.applyState('idle', 120);
-      }
-
-      disconnectedCallback() {
-        if (this.stopIdleCycle) this.stopIdleCycle();
-        if (this.stopDanceCycle) this.stopDanceCycle();
-        if (this.respondTimer) clearTimeout(this.respondTimer);
-        if (this.lidTimer) clearTimeout(this.lidTimer);
-        if (this.talkAnim) clearTimeout(this.talkAnim);
-      }
-    }
-
-    class GladosCardEditor extends HTMLElement {
-      constructor() {
-        super();
-        this.attachShadow({ mode: 'open' });
-      }
-
-      setConfig(config) {
-        this._config = config;
-        this.render();
-      }
-
-      set hass(hass) {
-        this._hass = hass;
-        const pickers = this.shadowRoot.querySelectorAll('ha-entity-picker');
-        if (pickers.length > 0) {
-          pickers.forEach(picker => { picker.hass = hass; });
-        } else {
-          this.render();
         }
-      }
-
-      configChanged(configKey, value) {
-        if (!this._config) return;
-
-        const newConfig = { ...this._config };
-        if (value === '' || value === undefined || value === null) {
-           delete newConfig[configKey];
-        } else {
-           newConfig[configKey] = value;
-        }
-
-        this._config = newConfig;
-
-        this.dispatchEvent(new CustomEvent('config-changed', {
-          detail: { config: this._config },
-          bubbles: true,
-          composed: true,
-        }));
-      }
-
-      render() {
-        if (!this._config || !this._hass) return;
-
-        this.shadowRoot.innerHTML = `
-          <style>
-            .card-config {
-              display: flex;
-              flex-direction: column;
-              gap: 16px;
-            }
-            .side-by-side {
-              display: flex;
-              gap: 16px;
-              margin-top: 8px;
-            }
-            .side-by-side > div {
-              flex: 1;
-              display: flex;
-              flex-direction: column;
-            }
-            label {
-              font-family: var(--paper-font-body1_-_font-family, sans-serif);
-              font-size: 14px;
-              color: var(--primary-text-color);
-            }
-            .secondary {
-              font-size: 12px;
-              color: var(--secondary-text-color);
-              margin-top: 2px;
-            }
-          </style>
-          <div class="card-config">
-            <ha-entity-picker
-              id="entity-picker"
-              label="Voice Assistant Entity (Required)"
-              allow-custom-entity
-            ></ha-entity-picker>
-
-            <ha-entity-picker
-              id="media-picker"
-              label="Media Player Entity (Optional)"
-              allow-custom-entity
-            ></ha-entity-picker>
-
-            <ha-entity-picker
-              id="bpm-picker"
-              label="BPM Sensor Entity (Optional)"
-              allow-custom-entity
-            ></ha-entity-picker>
-
-            <div class="side-by-side">
-              <div>
-                 <label>Response Delay: <span id="delay-val">${this._config.respond_delay !== undefined ? this._config.respond_delay : 0}</span>s</label>
-                 <div class="secondary">Time before she starts talking.</div>
-                 <ha-slider
-                   id="delay-slider"
-                   min="0" max="16" step="0.5"
-                   pin
-                   value="${this._config.respond_delay !== undefined ? this._config.respond_delay : 0}"
-                 ></ha-slider>
-              </div>
-              <div>
-                 <label>Zoom Scale: <span id="zoom-val">${this._config.zoom !== undefined ? this._config.zoom : 85}</span>%</label>
-                 <ha-slider
-                   id="zoom-slider"
-                   min="10" max="200" step="1"
-                   pin
-                   value="${this._config.zoom !== undefined ? this._config.zoom : 85}"
-                 ></ha-slider>
-              </div>
-            </div>
-
-            <ha-formfield label="Transparent Background">
-              <ha-switch id="bg-switch"></ha-switch>
-            </ha-formfield>
-          </div>
-        `;
-
-        const entityPicker = this.shadowRoot.querySelector('#entity-picker');
-        entityPicker.hass = this._hass;
-        entityPicker.value = this._config.entity;
-        entityPicker.includeDomains = ['assist_satellite'];
-        entityPicker.addEventListener('value-changed', (ev) => this.configChanged('entity', ev.detail.value));
-
-        const mediaPicker = this.shadowRoot.querySelector('#media-picker');
-        mediaPicker.hass = this._hass;
-        mediaPicker.value = this._config.media_entity;
-        mediaPicker.includeDomains = ['media_player'];
-        mediaPicker.addEventListener('value-changed', (ev) => this.configChanged('media_entity', ev.detail.value));
-
-        const bpmPicker = this.shadowRoot.querySelector('#bpm-picker');
-        bpmPicker.hass = this._hass;
-        bpmPicker.value = this._config.bpm_entity;
-        bpmPicker.includeDomains = ['sensor'];
-        bpmPicker.addEventListener('value-changed', (ev) => this.configChanged('bpm_entity', ev.detail.value));
-
-        const delaySlider = this.shadowRoot.querySelector('#delay-slider');
-        const delayVal = this.shadowRoot.querySelector('#delay-val');
-        delaySlider.addEventListener('change', (ev) => {
-          delayVal.innerText = ev.target.value;
-          this.configChanged('respond_delay', Number(ev.target.value));
-        });
-
-        const zoomSlider = this.shadowRoot.querySelector('#zoom-slider');
-        const zoomVal = this.shadowRoot.querySelector('#zoom-val');
-        zoomSlider.addEventListener('change', (ev) => {
-          zoomVal.innerText = ev.target.value;
-          this.configChanged('zoom', Number(ev.target.value));
-        });
-
-        const bgSwitch = this.shadowRoot.querySelector('#bg-switch');
-        bgSwitch.checked = this._config.transparent_bg === true;
-        bgSwitch.addEventListener('change', (ev) => {
-          this.configChanged('transparent_bg', ev.target.checked);
-        });
-      }
-    }
-
-    customElements.define('glados-card-editor', GladosCardEditor);
-    customElements.define('glados-card', GladosCard);
-
-    window.customCards = window.customCards || [];
-    window.customCards.push({
-      type: 'glados-card',
-      name: 'GLaDOS Custom Card',
-      preview: true,
-      description: 'A responsive, animated GLaDOS AI assistant card that reacts to voice and dances to music.'
     });
-  </script>
-</body>
-</html>
+  }
+
+  initGlados() {
+    const root = this.shadowRoot;
+    const config = this.config;
+
+    const el = {
+      svg: root.getElementById('glados-svg'),
+      head: root.getElementById('glados-head'),
+      bodyPivot: root.getElementById('body-pivot'),
+      eyeLayerIdle: root.getElementById('eye-layer-idle'),
+      eyeLayerListen: root.getElementById('eye-layer-listen'),
+      eyeLayerProcess: root.getElementById('eye-layer-process'),
+      eyeLayerRespond: root.getElementById('eye-layer-respond'),
+      eyeLayerDance: root.getElementById('eye-layer-dance'),
+      eyeHalo: root.getElementById('eye-halo'),
+      eyeCenter: root.getElementById('eye-center'),
+      pupil: root.getElementById('eye-pupil'),
+      eyeball: root.getElementById('eyeball-assembly'),
+      bellows: root.getElementById('bellows'),
+      lidTop: root.getElementById('eye-lid'),
+      lidBot: root.getElementById('eye-lid-bottom'),
+      dangerRing: root.getElementById('danger-ring'),
+      ledMatrices: root.querySelectorAll('.led-matrix')
+    };
+
+    let stateNow = 'idle';
+    let currentBaseLid = 0;
+
+    function setHead(rot, tx, ty, scale = 1.0, dur, ease = "cubic-bezier(0.34,1.06,0.64,1)") {
+      el.head.style.transition = `transform ${dur}s ${ease}`;
+      el.head.style.transform = `translate3d(${tx}px,${ty}px,0) rotate(${rot}deg) scale(${scale})`;
+    }
+    function setBodySwivel(rot, sx, dur) {
+      el.bodyPivot.style.transition = `transform ${dur || 2.0}s cubic-bezier(0.45,0.05,0.55,0.95)`;
+      el.bodyPivot.style.animation = 'none';
+      el.bodyPivot.style.transform = `translate3d(0,0,0) rotate(${rot}deg) scaleX(${sx || 1})`;
+    }
+    function resetBodySwivel() {
+      el.bodyPivot.style.transition = '';
+      el.bodyPivot.style.animation = '';
+      el.bodyPivot.style.transform = '';
+    }
+    function setLid(amount, dur = 0.7) {
+      const px = amount * 17; 
+      el.lidTop.style.transition = `transform ${dur}s ease-in-out`;
+      el.lidBot.style.transition = `transform ${dur}s ease-in-out`;
+      el.lidTop.style.transform = `translate3d(0, ${px}px, 0)`;
+      el.lidBot.style.transform = `translate3d(0, ${-px}px, 0)`;
+    }
+    function setBaseLid(amount, dur = 0.7) {
+      currentBaseLid = amount;
+      setLid(amount, dur);
+    }
+    function setPupil(px, py) {
+      el.pupil.style.transform = `translate3d(${px}px, ${py}px, 0)`;
+      let ey = py * 1.5;
+      el.eyeball.style.transform = `translate3d(0, ${ey}px, 0)`;
+      el.bellows.style.transform = `translate3d(0, ${ey}px, 0)`;
+    }
+    function setLEDs(color, opacity) {
+      el.svg.style.setProperty('--led-color', color);
+      el.svg.style.setProperty('--led-opacity', opacity);
+    }
+
+    this.lidTimer = null;
+    this.idleTimer = null;
+    this.pupilTimer = null;
+    this.glitchRaf = null;
+    this.danceTimer = null;
+    this.danceLedTimer = null;
+    this.talkAnim = null;
+    this.respondTimer = null;
+
+    const startLidBehavior = () => {
+      if (this.lidTimer) clearTimeout(this.lidTimer);
+      const loop = () => {
+        if (stateNow === 'idle') {
+          let val = Math.max(0, Math.min(1, currentBaseLid + (Math.random() - 0.5) * 0.15));
+          setLid(val, 0.5 + Math.random() * 0.8);
+          this.lidTimer = setTimeout(loop, 1500 + Math.random() * 2500);
+        } else if (stateNow === 'processing') {
+          let val = 0.5 + (Math.random() * 0.35); 
+          setLid(val, 0.04 + Math.random() * 0.08);
+          this.lidTimer = setTimeout(loop, 40 + Math.random() * 120);
+        }
+      };
+      loop();
+    };
+
+    const stopLidBehavior = () => {
+      if (this.lidTimer) { clearTimeout(this.lidTimer); this.lidTimer = null; }
+    };
+
+    const IDLE_BEHAVIORS = [
+      { name: 'passive', exec() { setHead(0, 0, 0, 1.0, 2.4); setBaseLid(0, 1.0); resetBodySwivel(); }, min: 6000, max: 13000, weight: 4 },
+      { name: 'scan_right', exec() { setHead(12, 0, -5, 0.98, 1.4); setBaseLid(0, 1.0); setBodySwivel(-2, 1, 1.8); }, min: 3500, max: 7000, weight: 1.5 },
+      { name: 'scan_left', exec() { setHead(-12, 0, -5, 0.98, 1.4); setBaseLid(0, 1.0); setBodySwivel(2, 1, 1.8); }, min: 3500, max: 7000, weight: 1.5 },
+      { name: 'curious', exec() { setHead(8, 0, -20, 1.05, 1.2); setBaseLid(0, 0.8); setBodySwivel(-2, 1, 1.6); }, min: 4000, max: 8000, weight: 2 },
+      { name: 'contemptuous', exec() { setHead(-6, 0, 15, 0.95, 1.8); setBaseLid(0.65, 1.0); setBodySwivel(1.5, 1, 2.0); setTimeout(() => { if (stateNow === 'idle') setBaseLid(0, 1.5); }, 1500); }, min: 5000, max: 10000, weight: 2 },
+      { name: 'alert', exec() { setHead(0, 0, -25, 1.08, 0.28); setBaseLid(0, 0.2); setBodySwivel(-1, 1, 0.4); }, min: 1500, max: 3000, weight: 1 },
+      { name: 'bored', exec() { setHead(2, 0, 20, 0.96, 2.8); setBaseLid(0.7, 1.5); setBodySwivel(1, 1, 3.0); setTimeout(() => { if (stateNow === 'idle') setBaseLid(0, 1.5); }, 1500); }, min: 7000, max: 14000, weight: 1.5 },
+      { name: 'full_swivel', exec() { setBodySwivel(-6, 0.96, 2.5); setTimeout(() => { setHead(6, 0, -3, 1.02, 1.2); setBaseLid(0, 0.8); }, 600); }, min: 4000, max: 8000, weight: 0.8 },
+      { name: 'glitch', exec: () => {
+          let count = 0, lastTime = 0;
+          if (this.glitchRaf) cancelAnimationFrame(this.glitchRaf);
+          const glitchLoop = (timestamp) => {
+            if (!lastTime) lastTime = timestamp;
+            if (timestamp - lastTime > 60) {
+              lastTime = timestamp;
+              if (stateNow !== 'idle' || count > 12) {
+                cancelAnimationFrame(this.glitchRaf); this.glitchRaf = null;
+                if (stateNow === 'idle') {
+                  el.eyeHalo.setAttribute('fill', '#330800'); el.eyeCenter.setAttribute('fill', '#ffcc00'); setHead(0, 0, 0, 1.0, 0.4);
+                }
+                return;
+              }
+              setHead((Math.random()-0.5)*10, (Math.random()-0.5)*8, (Math.random()-0.5)*8, 1.0, 0.05, "linear");
+              if (count % 2 === 0) { el.eyeHalo.setAttribute('fill', '#110000'); el.eyeCenter.setAttribute('fill', '#884400'); } 
+              else { el.eyeHalo.setAttribute('fill', '#ffb800'); el.eyeCenter.setAttribute('fill', '#ffffff'); }
+              count++;
+            }
+            this.glitchRaf = requestAnimationFrame(glitchLoop);
+          };
+          this.glitchRaf = requestAnimationFrame(glitchLoop);
+      }, min: 4000, max: 7000, weight: 0.3 }
+    ];
+
+    const dartPupil = () => {
+      if (stateNow === 'idle') {
+        const max = 7;
+        setPupil((Math.random() - 0.5) * max * 2, (Math.random() - 0.5) * max * 2);
+        this.pupilTimer = setTimeout(dartPupil, 600 + Math.random() * 2500);
+      }
+    };
+
+    const runNextIdleBehavior = () => {
+      if (stateNow !== 'idle') return;
+      let r = Math.random() * IDLE_BEHAVIORS.reduce((s, b) => s + b.weight, 0), chosen = IDLE_BEHAVIORS[0];
+      for (const b of IDLE_BEHAVIORS) { r -= b.weight; if (r <= 0) { chosen = b; break; } }
+      chosen.exec();
+      this.idleTimer = setTimeout(runNextIdleBehavior, chosen.min + Math.random() * (chosen.max - chosen.min));
+    };
+
+    this.startIdleCycle = () => {
+      this.stopIdleCycle();
+      dartPupil();
+      this.idleTimer = setTimeout(runNextIdleBehavior, 2000 + Math.random() * 3000);
+    };
+
+    this.stopIdleCycle = () => {
+      if (this.idleTimer) { clearTimeout(this.idleTimer); this.idleTimer = null; }
+      if (this.pupilTimer) { clearTimeout(this.pupilTimer); this.pupilTimer = null; }
+      if (this.glitchRaf) { cancelAnimationFrame(this.glitchRaf); this.glitchRaf = null; }
+    };
+
+    this.stopDanceCycle = () => {
+      if (this.danceTimer) { clearTimeout(this.danceTimer); this.danceTimer = null; }
+      if (this.danceLedTimer) { clearTimeout(this.danceLedTimer); this.danceLedTimer = null; }
+    };
+
+    this.startDanceCycle = (bpm) => {
+      this.stopDanceCycle();
+      let dancePhase = 0; 
+      let currentRoutine = Math.floor(Math.random() * 8);
+      
+      const currentBpm = Math.max(60, Math.min(200, bpm)); 
+      const beatMs = (60 / currentBpm) * 1000;
+      const beatSec = beatMs / 1000;
+      
+      let expectedNextTick = performance.now() + beatMs;
+
+      const step = () => {
+        if (stateNow !== 'dancing') return;
+
+        if (dancePhase > 0 && dancePhase % 16 === 0) {
+            let nextRoutine;
+            do { nextRoutine = Math.floor(Math.random() * 8); } while (nextRoutine === currentRoutine);
+            currentRoutine = nextRoutine;
+        }
+
+        const choreoBlock = currentRoutine; 
+        const isDownBeat = dancePhase % 2 === 0;
+        const isQuadBeat = dancePhase % 4 === 0;
+        const phaseMod4 = dancePhase % 4;
+        const phaseMod8 = dancePhase % 8;
+        let dirX = isDownBeat ? 1 : -1;
+
+        setLEDs('#1DB954', '1'); 
+        el.eyeHalo.style.opacity = (choreoBlock === 7) ? '0.8' : '0.5'; 
+        el.eyeCenter.style.transform = 'scale(1.2)';
+
+        if (this.danceLedTimer) clearTimeout(this.danceLedTimer);
+        this.danceLedTimer = setTimeout(() => {
+          if (stateNow === 'dancing') {
+            setLEDs('#1DB954', '0.15'); 
+            el.eyeHalo.style.opacity = '0.05'; 
+            el.eyeCenter.style.transform = 'scale(1)'; 
+          }
+        }, beatMs * 0.3);
+
+        let r = 0, tx = 0, ty = 0, s = 1.0, lid = 0.0, ease = "ease-in-out";
+        let moveDur = beatSec;
+        let bodyDur = beatSec * 2;
+
+        if (currentBpm < 90) {
+           moveDur = beatSec * 2; bodyDur = beatSec * 4; ease = "ease-in-out"; lid = 0.4;
+           if (choreoBlock === 0) { r = isQuadBeat ? 8 : -8; tx = isQuadBeat ? 5 : -5; ty = 2; }
+           else if (choreoBlock === 1) { r = 0; tx = 0; ty = isQuadBeat ? 15 : -5; }
+           else if (choreoBlock === 2) { r = Math.sin(dancePhase * Math.PI / 2) * 6; tx = Math.sin(dancePhase * Math.PI / 2) * 5; ty = Math.cos(dancePhase * Math.PI / 4) * 8 + 4; }
+           else if (choreoBlock === 3) { r = (phaseMod8 < 4) ? 10 : -10; tx = (phaseMod8 < 4) ? 4 : -4; ty = 5; }
+           else if (choreoBlock === 4) { r = Math.sin(dancePhase * Math.PI / 4) * 12; tx = 0; ty = 0; }
+           else if (choreoBlock === 5) { r = isQuadBeat ? 4 : -4; tx = 0; ty = isQuadBeat ? 12 : 2; s = isQuadBeat ? 1.03 : 1.0; }
+           else if (choreoBlock === 6) { r = (phaseMod8 === 0) ? 12 : (phaseMod8 === 4) ? -6 : 0; tx = r * 0.5; ty = 8; }
+           else { r = 0; tx = 0; ty = 2; s = 1.05; lid = 0.5 + Math.sin(dancePhase * Math.PI / 2) * 0.3; }
+           if (!isDownBeat) return executeTick(); 
+
+        } else if (currentBpm < 125) {
+           moveDur = beatSec * 0.8; ease = "cubic-bezier(0.34, 1.06, 0.64, 1)"; lid = 0.2;
+           if (choreoBlock === 0) { r = isDownBeat ? 7 : -7; ty = isDownBeat ? 8 : -2; s = isDownBeat ? 1.02 : 1.0; }
+           else if (choreoBlock === 1) { const side = (phaseMod4 < 2) ? 1 : -1; r = side * 8; tx = side * 4; ty = isDownBeat ? 10 : 2; }
+           else if (choreoBlock === 2) { r = (phaseMod4 === 0) ? 10 : (phaseMod4 === 2) ? -10 : 0; ty = (phaseMod4 === 1 || phaseMod4 === 3) ? 12 : 0; ease = "ease-in-out"; }
+           else if (choreoBlock === 3) { r = [10, 5, -10, -5][phaseMod4]; ty = [0, 8, 0, 8][phaseMod4]; }
+           else if (choreoBlock === 4) { r = 0; tx = isDownBeat ? 8 : -8; ty = 4; }
+           else if (choreoBlock === 5) { r = isDownBeat ? 10 : -10; tx = isDownBeat ? 5 : -5; ty = isDownBeat ? 10 : -5; }
+           else if (choreoBlock === 6) { r = dirX * 6; ty = !isDownBeat ? 14 : 0; s = !isDownBeat ? 1.04 : 1.0; }
+           else { const side = (dancePhase % 3 === 0) ? -1 : 1; r = side * 8; ty = isDownBeat ? 8 : 0; }
+
+        } else if (currentBpm < 160) {
+           moveDur = beatSec * 0.6; ease = "cubic-bezier(0.25, 0.8, 0.25, 1)"; lid = isDownBeat ? 0.1 : 0.0;
+           if (choreoBlock === 0) { r = isDownBeat ? 12 : -12; tx = isDownBeat ? 6 : -6; ty = isDownBeat ? 10 : -8; s = 1.03; }
+           else if (choreoBlock === 1) { r = 0; tx = [8, 0, -8, 0][phaseMod4]; ty = isDownBeat ? 5 : -5; if (phaseMod4 === 3) lid = 0.6; }
+           else if (choreoBlock === 2) { r = isDownBeat ? 5 : -5; ty = isDownBeat ? 5 : -2; s = 1.0 + (phaseMod4 * 0.03); lid = 0.4 - (phaseMod4 * 0.1); }
+           else if (choreoBlock === 3) { r = isDownBeat ? 15 : -15; tx = isDownBeat ? 5 : -5; ty = 8; }
+           else if (choreoBlock === 4) { r = [10, 10, -10, -10][phaseMod4]; tx = [5, 5, -5, -5][phaseMod4]; ty = [8, -2, 8, -2][phaseMod4]; }
+           else if (choreoBlock === 5) { r = dirX * 10; ty = isDownBeat ? 12 : 4; s = 1.02; moveDur = beatSec * 0.4; ease="linear"; }
+           else if (choreoBlock === 6) { r = (phaseMod4 === 1 || phaseMod4 === 3) ? 0 : (phaseMod4 === 0 ? 12 : -12); ty = (phaseMod4 === 1 || phaseMod4 === 3) ? 14 : -2; }
+           else { r = isDownBeat ? 12 : 12; tx = isDownBeat ? 8 : 8; ty = isDownBeat ? 8 : -4; if (isDownBeat) moveDur = beatSec * 0.1; else moveDur = beatSec * 0.8; }
+           if (isDownBeat && choreoBlock !== 2) setPupil((Math.random()-0.5)*8, (Math.random()-0.5)*6);
+
+        } else {
+           moveDur = beatSec * 0.8; ease = "linear"; lid = isQuadBeat ? 0.4 : 0.0; 
+           if (choreoBlock === 0) { r = 0; tx = 0; ty = isDownBeat ? 20 : -10; s = isDownBeat ? 1.08 : 0.95; ease = "ease-out"; }
+           else if (choreoBlock === 1) { r = (Math.random() - 0.5) * 30; tx = (Math.random() - 0.5) * 15; ty = (Math.random() - 0.5) * 15; moveDur = beatSec * 0.5; }
+           else if (choreoBlock === 2) { r = isDownBeat ? 18 : -18; tx = isDownBeat ? 10 : -10; ty = 12; }
+           else if (choreoBlock === 3) { r = isDownBeat ? 10 : -10; tx = (Math.random() - 0.5) * 20; ty = 15; s = 1.1; el.eyeHalo.style.opacity = '0.8'; }
+           else if (choreoBlock === 4) { r = isDownBeat ? 25 : -25; tx = isDownBeat ? 15 : -15; ty = isDownBeat ? 15 : -15; }
+           else if (choreoBlock === 5) { r = 0; tx = 0; ty = isDownBeat ? 12 : 2; moveDur = beatSec * 0.3;  }
+           else if (choreoBlock === 6) { r = Math.sin(dancePhase * Math.PI) * 20; tx = Math.sin(dancePhase * Math.PI) * 12; ty = Math.cos(dancePhase * Math.PI / 2) * 15 + 5; }
+           else { if (phaseMod4 === 0) { r=15; ty=10; s=1.1; moveDur = beatSec * 0.1; } else { r=15; ty=10; s=1.1; moveDur = beatSec * 1.5; } el.eyeCenter.setAttribute('fill', (dancePhase%2===0)?'#ff0000':'#ffffff'); }
+           setPupil((Math.random()-0.5)*15, (Math.random()-0.5)*15);
+        }
+        
+        setHead(r, tx, ty, s, moveDur, ease);
+        setBodySwivel(r * -0.8, 1, bodyDur);
+        setBaseLid(lid, beatSec * 0.5);
+
+        const executeTick = () => {
+          dancePhase++;
+          const now = performance.now();
+          expectedNextTick += beatMs;
+          const delay = Math.max(0, expectedNextTick - now);
+          this.danceTimer = setTimeout(step, delay);
+        };
+        executeTick();
+      };
+      
+      step();
+    };
+
+    const TALK_MOVES = [
+      { r: -10, tx: -8, ty: -18, s: 1.02, dur: 1.8, lid: 0.1, px: 0, py: -2 },
+      { r: 4, tx: 0, ty: 16, s: 1.08, dur: 1.2, lid: 0.85, px: 0, py: 4 },
+      { r: 2, tx: 0, ty: 10, s: 1.04, dur: 1.0, lid: 0.5, px: 0, py: 2 },
+      { r: 12, tx: 10, ty: -12, s: 0.96, dur: 2.2, lid: 0.1, px: 0, py: -1 },
+      { r: 0, tx: 0, ty: 25, s: 1.10, dur: 1.8, lid: 0.9, px: 0, py: 5 },
+      { r: -6, tx: 6, ty: -22, s: 0.98, dur: 1.0, lid: 0.1, px: 0, py: -3 },
+      { r: 4, tx: -3, ty: 6, s: 1.03, dur: 2.0, lid: 0.4, px: 0, py: 1 },
+      { r: -3, tx: 0, ty: 22, s: 1.15, dur: 1.2, lid: 0.95, px: 0, py: 6 },
+      { r: 6, tx: 3, ty: -6, s: 1.0, dur: 1.5, lid: 0.2, px: 0, py: 0 },
+    ];
+
+    const startTalkAnim = () => {
+      if (this.talkAnim) clearTimeout(this.talkAnim);
+      let talkPhase = 0;
+      const step = () => {
+        const m = TALK_MOVES[talkPhase % TALK_MOVES.length];
+        setHead(m.r, m.tx, m.ty, m.s, m.dur, "ease-in-out");
+        setLid(m.lid, m.dur);
+        setPupil(m.px, m.py);
+        setBodySwivel(m.r * -0.6, 1, m.dur); 
+        talkPhase++;
+        this.talkAnim = setTimeout(step, m.dur * 1000);
+      };
+      step();
+    };
+
+    const animateGlaDOS = (state, bpm) => {
+      stateNow = state;
+      if (this.talkAnim) clearTimeout(this.talkAnim);
+      stopLidBehavior();
+      this.stopIdleCycle();
+      this.stopDanceCycle();
+
+      el.ledMatrices.forEach(m => m.classList.remove('pulsing'));
+      if (el.dangerRing) el.dangerRing.setAttribute('opacity', '0');
+
+      el.eyeLayerIdle.style.opacity = '0'; 
+      el.eyeLayerListen.style.opacity = '0'; 
+      el.eyeLayerProcess.style.opacity = '0'; 
+      el.eyeLayerRespond.style.opacity = '0';
+      el.eyeLayerDance.style.opacity = '0';
+      el.eyeCenter.style.transform = 'scale(1)';
+      el.eyeCenter.style.transition = 'fill 0.8s ease-in-out';
+
+      if (state === 'idle') {
+        el.eyeLayerIdle.style.opacity = '1';
+        el.eyeHalo.style.transition = 'fill 0.8s ease-in-out, opacity 0.8s'; 
+        el.eyeHalo.setAttribute('fill', '#330800'); 
+        el.eyeHalo.style.opacity = '0.05';
+        el.eyeCenter.setAttribute('fill', '#ffcc00');
+        setHead(0, 0, 0, 1.0, 2.2); setLid(0, 1.2); setPupil(0, 0); currentBaseLid = 0;
+        setLEDs('#ffb800', '0.15');
+        resetBodySwivel();
+        startLidBehavior();
+        this.startIdleCycle();
+        
+      } else if (state === 'dancing') {
+        el.eyeLayerDance.style.opacity = '1';
+        el.eyeHalo.style.transition = 'fill 0.8s ease-in-out, opacity 0.15s ease-out';
+        el.eyeHalo.setAttribute('fill', '#1DB954'); 
+        el.eyeCenter.setAttribute('fill', '#ffffff'); 
+        el.eyeCenter.style.transformOrigin = '130px 364px';
+        el.eyeCenter.style.transition = 'transform 0.1s ease-out, fill 0.8s ease-in-out';
+
+        setLEDs('#1DB954', '0.15'); 
+        resetBodySwivel();
+        this.startDanceCycle(bpm);
+        
+      } else if (state === 'listening') {
+        el.eyeLayerListen.style.opacity = '1';
+        el.eyeHalo.style.transition = 'fill 0.8s ease-in-out, opacity 0.8s';
+        el.eyeHalo.setAttribute('fill', '#00ccff'); 
+        el.eyeHalo.style.opacity = '0.05';
+        el.eyeCenter.setAttribute('fill', '#aaffff');
+        setHead(4, 0, -8, 1.06, 1.0); setBaseLid(0.1, 0.4); setPupil(0, -3);
+        setLEDs('#00ccff', '1');
+        setBodySwivel(-2, 1, 1.4);
+        
+      } else if (state === 'processing') {
+        el.eyeLayerProcess.style.opacity = '1';
+        el.eyeHalo.style.transition = 'fill 0.8s ease-in-out, opacity 0.8s';
+        el.eyeHalo.setAttribute('fill', '#ff6600'); 
+        el.eyeHalo.style.opacity = '0.05';
+        el.eyeCenter.setAttribute('fill', '#ffddaa');
+        setHead(-2, 0, 10, 0.96, 1.4); setBaseLid(0.65, 0.5); 
+        setLEDs('#ff6600', '1');
+        setBodySwivel(1, 0.98, 1.8);
+        el.ledMatrices.forEach(m => m.classList.add('pulsing'));
+        startLidBehavior();
+        const dart = () => {
+          if (stateNow !== 'processing') return;
+          setPupil((Math.random() - 0.5) * 12, 4);
+          this.pupilTimer = setTimeout(dart, 200 + Math.random() * 600);
+        };
+        dart();
+        
+      } else if (state === 'responding') {
+        el.eyeLayerRespond.style.opacity = '1';
+        el.eyeHalo.style.transition = 'fill 0.8s ease-in-out, opacity 0.8s';
+        el.eyeHalo.setAttribute('fill', '#ff2200'); 
+        el.eyeHalo.style.opacity = '0.05';
+        el.eyeCenter.setAttribute('fill', '#ffaaaa');
+        if(el.dangerRing) el.dangerRing.setAttribute('opacity', '1');
+        setLEDs('#ff2200', '1');
+        setBodySwivel(0, 1, 0.8);
+        startTalkAnim();
+      }
+    };
+
+    this.applyState = (raw, bpm) => {
+      const s = (raw || 'idle').toLowerCase();
+      let mapped = 'idle';
+      if (s.includes('respond') || s.includes('speak') || s.includes('tts')) mapped = 'responding';
+      else if (s.includes('listen') || s.includes('wake')) mapped = 'listening';
+      else if (s.includes('process') || s.includes('think')) mapped = 'processing';
+      else if (s === 'dancing') mapped = 'dancing';
+
+      if (this.respondTimer) {
+        clearTimeout(this.respondTimer);
+        this.respondTimer = null;
+      }
+
+      const delaySeconds = config.respond_delay !== undefined ? parseFloat(config.respond_delay) : 0;
+
+      if (mapped === 'responding' && this._lastEffectiveState !== 'responding' && delaySeconds > 0) {
+        this.respondTimer = setTimeout(() => {
+          this._lastEffectiveState = 'responding';
+          animateGlaDOS('responding', bpm);
+        }, delaySeconds * 1000);
+        return; 
+      }
+
+      this._lastEffectiveState = mapped;
+      animateGlaDOS(mapped, bpm);
+    };
+
+    this.applyState('idle', 120);
+  }
+
+  disconnectedCallback() {
+    if (this.stopIdleCycle) this.stopIdleCycle();
+    if (this.stopDanceCycle) this.stopDanceCycle();
+    if (this.respondTimer) clearTimeout(this.respondTimer);
+    if (this.lidTimer) clearTimeout(this.lidTimer);
+    if (this.talkAnim) clearTimeout(this.talkAnim);
+  }
+}
+
+class GladosCardEditor extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+  }
+
+  setConfig(config) {
+    this._config = config;
+    this.render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    const pickers = this.shadowRoot.querySelectorAll('ha-entity-picker');
+    if (pickers.length > 0) {
+      pickers.forEach(picker => { picker.hass = hass; });
+    } else {
+      this.render();
+    }
+  }
+
+  configChanged(configKey, value) {
+    if (!this._config) return;
+
+    const newConfig = { ...this._config };
+    if (value === '' || value === undefined || value === null) {
+       delete newConfig[configKey];
+    } else {
+       newConfig[configKey] = value;
+    }
+
+    this._config = newConfig;
+
+    this.dispatchEvent(new CustomEvent('config-changed', {
+      detail: { config: this._config },
+      bubbles: true,
+      composed: true,
+    }));
+  }
+
+  render() {
+    if (!this._config || !this._hass) return;
+
+    this.shadowRoot.innerHTML = `
+      <style>
+        .card-config {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+        .side-by-side {
+          display: flex;
+          gap: 16px;
+          margin-top: 8px;
+        }
+        .side-by-side > div {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+        }
+        label {
+          font-family: var(--paper-font-body1_-_font-family, sans-serif);
+          font-size: 14px;
+          color: var(--primary-text-color);
+        }
+        .secondary {
+          font-size: 12px;
+          color: var(--secondary-text-color);
+          margin-top: 2px;
+        }
+      </style>
+      <div class="card-config">
+        <ha-entity-picker
+          id="entity-picker"
+          label="Voice Assistant Entity (Required)"
+          allow-custom-entity
+        ></ha-entity-picker>
+
+        <ha-entity-picker
+          id="media-picker"
+          label="Media Player Entity (Optional)"
+          allow-custom-entity
+        ></ha-entity-picker>
+
+        <ha-entity-picker
+          id="bpm-picker"
+          label="BPM Sensor Entity (Optional)"
+          allow-custom-entity
+        ></ha-entity-picker>
+
+        <div class="side-by-side">
+          <div>
+             <label>Response Delay: <span id="delay-val">${this._config.respond_delay !== undefined ? this._config.respond_delay : 0}</span>s</label>
+             <div class="secondary">Time before she starts talking.</div>
+             <ha-slider
+               id="delay-slider"
+               min="0" max="16" step="0.5"
+               pin
+               value="${this._config.respond_delay !== undefined ? this._config.respond_delay : 0}"
+             ></ha-slider>
+          </div>
+          <div>
+             <label>Zoom Scale: <span id="zoom-val">${this._config.zoom !== undefined ? this._config.zoom : 85}</span>%</label>
+             <ha-slider
+               id="zoom-slider"
+               min="10" max="200" step="1"
+               pin
+               value="${this._config.zoom !== undefined ? this._config.zoom : 85}"
+             ></ha-slider>
+          </div>
+        </div>
+
+        <ha-formfield label="Transparent Background">
+          <ha-switch id="bg-switch"></ha-switch>
+        </ha-formfield>
+      </div>
+    `;
+
+    const entityPicker = this.shadowRoot.querySelector('#entity-picker');
+    entityPicker.hass = this._hass;
+    entityPicker.value = this._config.entity;
+    entityPicker.includeDomains = ['assist_satellite'];
+    entityPicker.addEventListener('value-changed', (ev) => this.configChanged('entity', ev.detail.value));
+
+    const mediaPicker = this.shadowRoot.querySelector('#media-picker');
+    mediaPicker.hass = this._hass;
+    mediaPicker.value = this._config.media_entity;
+    mediaPicker.includeDomains = ['media_player'];
+    mediaPicker.addEventListener('value-changed', (ev) => this.configChanged('media_entity', ev.detail.value));
+
+    const bpmPicker = this.shadowRoot.querySelector('#bpm-picker');
+    bpmPicker.hass = this._hass;
+    bpmPicker.value = this._config.bpm_entity;
+    bpmPicker.includeDomains = ['sensor'];
+    bpmPicker.addEventListener('value-changed', (ev) => this.configChanged('bpm_entity', ev.detail.value));
+
+    const delaySlider = this.shadowRoot.querySelector('#delay-slider');
+    const delayVal = this.shadowRoot.querySelector('#delay-val');
+    delaySlider.addEventListener('change', (ev) => {
+      delayVal.innerText = ev.target.value;
+      this.configChanged('respond_delay', Number(ev.target.value));
+    });
+
+    const zoomSlider = this.shadowRoot.querySelector('#zoom-slider');
+    const zoomVal = this.shadowRoot.querySelector('#zoom-val');
+    zoomSlider.addEventListener('change', (ev) => {
+      zoomVal.innerText = ev.target.value;
+      this.configChanged('zoom', Number(ev.target.value));
+    });
+
+    const bgSwitch = this.shadowRoot.querySelector('#bg-switch');
+    bgSwitch.checked = this._config.transparent_bg === true;
+    bgSwitch.addEventListener('change', (ev) => {
+      this.configChanged('transparent_bg', ev.target.checked);
+    });
+  }
+}
+
+customElements.define('glados-card-editor', GladosCardEditor);
+customElements.define('glados-card', GladosCard);
+
+window.customCards = window.customCards || [];
+window.customCards.push({
+  type: 'glados-card',
+  name: 'GLaDOS Custom Card',
+  preview: true,
+  description: 'A responsive, animated GLaDOS AI assistant card that reacts to voice and dances to music.'
+});
