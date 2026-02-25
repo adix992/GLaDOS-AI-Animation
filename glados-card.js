@@ -173,47 +173,37 @@ class GladosCard extends HTMLElement {
       <div id="scene">
         <svg id="glados-svg" viewBox="0 116 280 320">
           <defs>
-            <linearGradient id="ceramicGrad" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stop-color="#8a8d94"/>
-              <stop offset="8%" stop-color="#b0b4bc"/>
-              <stop offset="8.5%" stop-color="#ffffff"/>
-              <stop offset="25%" stop-color="#ffffff"/>
-              <stop offset="75%" stop-color="#ffffff"/>
-              <stop offset="91.5%" stop-color="#e8eaec"/>
-              <stop offset="92%" stop-color="#a0a4ac"/>
-              <stop offset="100%" stop-color="#6a6d75"/>
+            <linearGradient id="headBevelGrad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#60646c"/>
+              <stop offset="8%" stop-color="#a0a4ac"/> <stop offset="11%" stop-color="#60646c"/>
+              <stop offset="11.5%" stop-color="#2a2d34"/> <stop offset="12%" stop-color="#ffffff"/> <stop offset="50%" stop-color="#e8eaee"/> <stop offset="88%" stop-color="#d0d4dc"/> <stop offset="88.5%" stop-color="#2a2d34"/> <stop offset="89%" stop-color="#50545c"/>
+              <stop offset="92%" stop-color="#80848c"/> <stop offset="100%" stop-color="#3a3e46"/>
             </linearGradient>
             
-            <radialGradient id="headGrad" cx="40%" cy="40%" r="65%" fx="35%" fy="35%">
-              <stop offset="0%" stop-color="#ffffff" />
-              <stop offset="40%" stop-color="#e0e4e8" />
-              <stop offset="80%" stop-color="#a0a4ac" />
-              <stop offset="100%" stop-color="#70747c" />
-            </radialGradient>
-            
-            <linearGradient id="ceramicShadow" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#ffffff" stop-opacity="0"/>
-              <stop offset="60%" stop-color="#60646c" stop-opacity="0.1"/>
-              <stop offset="85%" stop-color="#2a2c32" stop-opacity="0.5"/>
-              <stop offset="100%" stop-color="#0a0a0f" stop-opacity="0.85"/>
+            <linearGradient id="headVertGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#0a0a0f" stop-opacity="0.6"/>
+              <stop offset="12%" stop-color="#0a0a0f" stop-opacity="0.05"/>
+              <stop offset="50%" stop-color="#0a0a0f" stop-opacity="0"/>
+              <stop offset="88%" stop-color="#0a0a0f" stop-opacity="0.05"/>
+              <stop offset="100%" stop-color="#0a0a0f" stop-opacity="0.8"/>
+            </linearGradient>
+
+            <linearGradient id="torsoGradDark" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#2a2d34"/>
+              <stop offset="25%" stop-color="#4a4f58"/>
+              <stop offset="50%" stop-color="#5a5f68"/>
+              <stop offset="75%" stop-color="#4a4f58"/>
+              <stop offset="100%" stop-color="#25282e"/>
             </linearGradient>
 
             <linearGradient id="bezelGrad" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stop-color="#4a4d54"/>
-              <stop offset="20%" stop-color="#6a6d75"/>
-              <stop offset="50%" stop-color="#3a3c42"/>
-              <stop offset="80%" stop-color="#1a1c20"/>
-              <stop offset="100%" stop-color="#0a0a0c"/>
+              <stop offset="0%" stop-color="#181a1e"/>
+              <stop offset="20%" stop-color="#3a3e46"/>
+              <stop offset="50%" stop-color="#202228"/>
+              <stop offset="80%" stop-color="#101216"/>
+              <stop offset="100%" stop-color="#050508"/>
             </linearGradient>
 
-            <linearGradient id="ceramicGradDark" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stop-color="#8a8e96"/>
-              <stop offset="15%" stop-color="#b0b4bc"/>
-              <stop offset="50%" stop-color="#d0d4dc"/>
-              <stop offset="85%" stop-color="#8a8e96"/>
-              <stop offset="100%" stop-color="#555a62"/>
-            </linearGradient>
-            
             <linearGradient id="armorVDark" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stop-color="#14141a"/>
               <stop offset="50%" stop-color="#09090c"/>
@@ -221,8 +211,8 @@ class GladosCard extends HTMLElement {
             </linearGradient>
             
             <linearGradient id="cavityGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#181a1c"/>
-              <stop offset="100%" stop-color="#30353a"/>
+              <stop offset="0%" stop-color="#101216"/>
+              <stop offset="100%" stop-color="#22252a"/>
             </linearGradient>
             
             <linearGradient id="trackGrad" x1="0" y1="0" x2="1" y2="0">
@@ -233,11 +223,12 @@ class GladosCard extends HTMLElement {
             
             <radialGradient id="eyeGradIdle" cx="50%" cy="50%" r="50%">
               <stop offset="0%" stop-color="#ffffff"/>
-              <stop offset="20%" stop-color="#ffcc00"/>
-              <stop offset="55%" stop-color="#d95500"/>
-              <stop offset="80%" stop-color="#7a1100"/>
+              <stop offset="25%" stop-color="#ffea66"/>
+              <stop offset="55%" stop-color="#ffaa00"/>
+              <stop offset="85%" stop-color="#551100"/>
               <stop offset="100%" stop-color="#110000"/>
             </radialGradient>
+            
             <radialGradient id="eyeGradListen" cx="50%" cy="50%" r="50%">
               <stop offset="0%" stop-color="#ffffff"/>
               <stop offset="25%" stop-color="#aaffff"/>
@@ -298,23 +289,23 @@ class GladosCard extends HTMLElement {
 
           <g id="body-pivot">
             <g id="torso" transform="translate(140, 116) scale(1.2) translate(-140, -116)">
-              <ellipse cx="140" cy="116" rx="55" ry="15" fill="#1c1c26" stroke="#0c0c12" stroke-width="1.2"/>
-              <ellipse cx="140" cy="116" rx="46" ry="11" fill="#141420" stroke="#1e1e2c" stroke-width=".7"/>
-              <path d="M95 130 L92 138 L90 200 Q90 206 97 208 L183 208 Q190 206 190 200 L188 138 L185 130 Z" fill="url(#armorVDark)" stroke="#111115" stroke-width=".8"/>
-              <path d="M94 126 L86 134 L84 200 Q84 210 94 212 L186 212 Q196 210 196 200 L194 134 L186 126 Z" fill="url(#ceramicGradDark)" stroke="#80848c" stroke-width="1.4"/>
-              <path d="M90 132 L62 140 L58 180 L62 196 L74 200 L90 196 Z" fill="url(#ceramicGradDark)" stroke="#80848c" stroke-width="1"/>
-              <path d="M90 136 L66 143 L62 178 L66 192 L76 196 L90 192 Z" fill="#eeeeee" opacity="0.05"/>
+              <ellipse cx="140" cy="116" rx="55" ry="15" fill="#121218" stroke="#050508" stroke-width="1.2"/>
+              <ellipse cx="140" cy="116" rx="46" ry="11" fill="#0a0a10" stroke="#121218" stroke-width=".7"/>
+              <path d="M95 130 L92 138 L90 200 Q90 206 97 208 L183 208 Q190 206 190 200 L188 138 L185 130 Z" fill="url(#armorVDark)" stroke="#050508" stroke-width=".8"/>
+              <path d="M94 126 L86 134 L84 200 Q84 210 94 212 L186 212 Q196 210 196 200 L194 134 L186 126 Z" fill="url(#torsoGradDark)" stroke="#40444c" stroke-width="1.4"/>
+              <path d="M90 132 L62 140 L58 180 L62 196 L74 200 L90 196 Z" fill="url(#torsoGradDark)" stroke="#40444c" stroke-width="1"/>
+              <path d="M90 136 L66 143 L62 178 L66 192 L76 196 L90 192 Z" fill="#eeeeee" opacity="0.02"/>
               <circle cx="60" cy="168" r="9" fill="#14141c" stroke="#0c0c12" stroke-width="1"/>
               <circle cx="60" cy="168" r="5.5" fill="#0c0c10" stroke="#1a1a22" stroke-width=".8"/>
               <path d="M90 132 C86 152 84 172 86 192" stroke="#1a1a22" stroke-width="2.5" fill="none" opacity=".8"/>
-              <path d="M190 132 L218 140 L222 180 L218 196 L206 200 L190 196 Z" fill="url(#ceramicGradDark)" stroke="#80848c" stroke-width="1"/>
-              <path d="M190 136 L214 143 L218 178 L214 192 L204 196 L190 192 Z" fill="#eeeeee" opacity="0.05"/>
+              <path d="M190 132 L218 140 L222 180 L218 196 L206 200 L190 196 Z" fill="url(#torsoGradDark)" stroke="#40444c" stroke-width="1"/>
+              <path d="M190 136 L214 143 L218 178 L214 192 L204 196 L190 192 Z" fill="#eeeeee" opacity="0.02"/>
               <circle cx="220" cy="168" r="9" fill="#14141c" stroke="#0c0c12" stroke-width="1"/>
               <circle cx="220" cy="168" r="5.5" fill="#0c0c10" stroke="#1a1a22" stroke-width=".8"/>
               <path d="M190 132 C194 152 196 172 194 192" stroke="#1a1a22" stroke-width="2.5" fill="none" opacity=".8"/>
-              <line x1="90" y1="152" x2="190" y2="152" stroke="#a0a4ac" stroke-width="1"/>
-              <line x1="89" y1="174" x2="191" y2="174" stroke="#a0a4ac" stroke-width="1"/>
-              <line x1="140" y1="128" x2="140" y2="210" stroke="#a0a4ac" stroke-width="1"/>
+              <line x1="90" y1="152" x2="190" y2="152" stroke="#3a3e46" stroke-width="1"/>
+              <line x1="89" y1="174" x2="191" y2="174" stroke="#3a3e46" stroke-width="1"/>
+              <line x1="140" y1="128" x2="140" y2="210" stroke="#3a3e46" stroke-width="1"/>
               <rect x="94" y="135" width="36" height="20" rx="2.5" fill="#050508" stroke="#101014" stroke-width=".6"/>
               <rect x="96" y="137" width="32" height="16" rx="1.5" fill="#020202"/>
               <g id="led-matrix-left" class="led-matrix">
@@ -362,12 +353,12 @@ class GladosCard extends HTMLElement {
                 <ellipse cx="140" cy="285" rx="18" ry="6" fill="#181824" stroke="#0a0a0f" stroke-width="1"/>
                 <ellipse cx="140" cy="285" rx="12" ry="3.8" fill="#101015" stroke="#181824" stroke-width=".6"/>
                 
-                <rect x="75" y="232" width="130" height="247" rx="60" fill="url(#headGrad)"/>
-                <rect x="75" y="232" width="130" height="247" rx="60" fill="url(#ceramicShadow)"/>
+                <rect x="75" y="232" width="130" height="247" rx="60" fill="url(#headBevelGrad)"/>
+                <rect x="75" y="232" width="130" height="247" rx="60" fill="url(#headVertGrad)"/>
                 
                 <rect x="93" y="279.25" width="76" height="171.5" rx="38" fill="#000" opacity="0.6" filter="url(#softGlow)"/>
-                <rect x="91" y="277.25" width="78" height="173.5" rx="39" fill="url(#headGrad)" stroke="#1a1c22" stroke-width="1"/>
-                <rect x="93" y="279.25" width="74" height="169.5" rx="37" fill="none" stroke="#6a6d75" stroke-width="1.5"/>
+                <rect x="91" y="277.25" width="78" height="173.5" rx="39" fill="url(#bezelGrad)" stroke="#111216" stroke-width="1"/>
+                <rect x="93" y="279.25" width="74" height="169.5" rx="37" fill="none" stroke="#4a4d54" stroke-width="1.5"/>
 
                 <g clip-path="url(#cavityClip)">
                    <rect x="97" y="283.25" width="66" height="161.5" rx="33" fill="url(#cavityGrad)"/>
@@ -377,7 +368,7 @@ class GladosCard extends HTMLElement {
                    
                    <g clip-path="url(#trackClip)">
                       <g id="bellows" style="transition: transform 0.15s ease-out;">
-                         <g stroke="#000" stroke-width="4.5" stroke-linecap="butt" opacity="0.9">
+                         <g stroke="#050505" stroke-width="4.5" stroke-linecap="butt" opacity="0.9">
                             <line x1="107" y1="140" x2="153" y2="140" /><line x1="107" y1="152" x2="153" y2="152" /><line x1="107" y1="164" x2="153" y2="164" /><line x1="107" y1="176" x2="153" y2="176" /><line x1="107" y1="188" x2="153" y2="188" /><line x1="107" y1="200" x2="153" y2="200" /><line x1="107" y1="212" x2="153" y2="212" /><line x1="107" y1="224" x2="153" y2="224" /><line x1="107" y1="236" x2="153" y2="236" /><line x1="107" y1="248" x2="153" y2="248" /><line x1="107" y1="260" x2="153" y2="260" /><line x1="107" y1="272" x2="153" y2="272" /><line x1="107" y1="284" x2="153" y2="284" /><line x1="107" y1="296" x2="153" y2="296" /><line x1="107" y1="308" x2="153" y2="308" /><line x1="107" y1="320" x2="153" y2="320" /><line x1="107" y1="332" x2="153" y2="332" /><line x1="107" y1="344" x2="153" y2="344" /><line x1="107" y1="356" x2="153" y2="356" /><line x1="107" y1="368" x2="153" y2="368" /><line x1="107" y1="380" x2="153" y2="380" /><line x1="107" y1="392" x2="153" y2="392" /><line x1="107" y1="404" x2="153" y2="404" /><line x1="107" y1="416" x2="153" y2="416" /><line x1="107" y1="428" x2="153" y2="428" /><line x1="107" y1="440" x2="153" y2="440" /><line x1="107" y1="452" x2="153" y2="452" /><line x1="107" y1="464" x2="153" y2="464" /><line x1="107" y1="476" x2="153" y2="476" /><line x1="107" y1="488" x2="153" y2="488" /><line x1="107" y1="500" x2="153" y2="500" /><line x1="107" y1="512" x2="153" y2="512" /><line x1="107" y1="524" x2="153" y2="524" />
                          </g>
                       </g>
@@ -448,7 +439,6 @@ class GladosCard extends HTMLElement {
     let stateNow = 'idle';
     let currentBaseLid = 0;
 
-    // TABLET OPTIMIZATION: Forcing translate3d to bypass CPU layout passes
     function setHead(rot, tx, ty, scale = 1.0, dur, ease = "cubic-bezier(0.34,1.06,0.64,1)") {
       el.head.style.transition = `transform ${dur}s ${ease}`;
       el.head.style.transform = `translate3d(${tx}px,${ty}px,0) rotate(${rot}deg) scale(${scale})`;
@@ -576,7 +566,6 @@ class GladosCard extends HTMLElement {
       if (this.glitchRaf) { cancelAnimationFrame(this.glitchRaf); this.glitchRaf = null; }
     };
 
-    // --- 32-ROUTINE DRIFT-FREE DANCE ENGINE ---
     this.stopDanceCycle = () => {
       if (this.danceTimer) { clearTimeout(this.danceTimer); this.danceTimer = null; }
       if (this.danceLedTimer) { clearTimeout(this.danceLedTimer); this.danceLedTimer = null; }
@@ -591,7 +580,6 @@ class GladosCard extends HTMLElement {
       const beatMs = (60 / currentBpm) * 1000;
       const beatSec = beatMs / 1000;
       
-      // TABLET OPTIMIZATION: Drift-free timing tracking.
       let expectedNextTick = performance.now() + beatMs;
 
       const step = () => {
@@ -680,17 +668,11 @@ class GladosCard extends HTMLElement {
         setBodySwivel(r * -0.8, 1, bodyDur);
         setBaseLid(lid, beatSec * 0.5);
 
-        // TABLET OPTIMIZATION: Drift-free calculation
         const executeTick = () => {
           dancePhase++;
           const now = performance.now();
           expectedNextTick += beatMs;
-          
-          // Failsafe: If the tablet hung completely (e.g. screen off), reset the math to prevent it from rapid-firing to catch up.
-          if (expectedNextTick < now) {
-              expectedNextTick = now + beatMs;
-          }
-          
+          if (expectedNextTick < now) { expectedNextTick = now + beatMs; }
           const delay = Math.max(0, expectedNextTick - now);
           this.danceTimer = setTimeout(step, delay);
         };
