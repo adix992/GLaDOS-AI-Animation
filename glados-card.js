@@ -26,7 +26,7 @@ class GladosCard extends HTMLElement {
 
   setConfig(config) {
     if (!config.entity && !this.config) {
-      // Create a gentle fallback so the editor can load even if empty
+      // Gentle fallback so the visual editor loads safely
       this.config = { ...config, entity: 'assist_satellite.example' };
     } else {
       this.config = config;
@@ -46,12 +46,12 @@ class GladosCard extends HTMLElement {
     const mediaEntity = this.config.media_entity;
     const bpmEntity = this.config.bpm_entity;
 
-    // 1. HA Firehose Gatekeeper
+    // 1. HA Firehose Gatekeeper: Only parse if our tracked entities exist
     const newVoiceState = (entity && hass.states[entity]) ? hass.states[entity].state.toLowerCase() : 'idle';
     const newMediaState = (mediaEntity && hass.states[mediaEntity]) ? hass.states[mediaEntity].state.toLowerCase() : 'paused';
     const newBpmState = (bpmEntity && hass.states[bpmEntity]) ? hass.states[bpmEntity].state : '120';
 
-    // 2. Abort immediately if nothing relevant changed
+    // 2. Abort entirely if nothing relevant changed (Saves massive CPU cycles on the tablet)
     if (this._lastHassVoice === newVoiceState && 
         this._lastHassMedia === newMediaState && 
         this._lastHassBpm === newBpmState) {
@@ -125,27 +125,31 @@ class GladosCard extends HTMLElement {
           --led-opacity: 0.15;
         }
 
+        /* TABLET OPTIMIZATION: GPU Layers & Pre-Compositing */
+        #body-pivot, #head-sway-pivot, #glados-head, #eyeball-assembly, #eye-pupil, #bellows, #eye-lid, #eye-lid-bottom {
+          will-change: transform;
+        }
+        .led-dot, .ind, #eye-halo, .eye-layer {
+          will-change: opacity, fill;
+        }
+
         .led-dot, #ind-l1, #ind-l2, #ind-r1, #ind-r2 {
           transition: fill 0.2s, opacity 0.15s ease-out;
           fill: var(--led-color);
           opacity: var(--led-opacity);
         }
-
-        #body-pivot, #head-sway-pivot, #glados-head, #eyeball-assembly, #eye-pupil, #bellows, #eye-lid, #eye-lid-bottom {
-          will-change: transform;
-        }
         
         #body-pivot { transform-origin: 140px 116px; animation: body-sway 8s ease-in-out infinite; }
         @keyframes body-sway {
-          0%   { transform: rotate(-1.4deg); }
-          50%  { transform: rotate( 1.4deg); }
-          100% { transform: rotate(-1.4deg); }
+          0%   { transform: rotate(-1.4deg) translateZ(0); }
+          50%  { transform: rotate( 1.4deg) translateZ(0); }
+          100% { transform: rotate(-1.4deg) translateZ(0); }
         }
         
         #head-sway-pivot { transform-origin: 140px 285px; animation: head-ambient-sway 13s ease-in-out infinite; }
         @keyframes head-ambient-sway {
-          0%, 100% { transform: rotate(-0.8deg); }
-          50%      { transform: rotate(0.8deg); }
+          0%, 100% { transform: rotate(-0.8deg) translateZ(0); }
+          50%      { transform: rotate(0.8deg) translateZ(0); }
         }
 
         #glados-head {
@@ -179,6 +183,13 @@ class GladosCard extends HTMLElement {
               <stop offset="92%" stop-color="#a0a4ac"/>
               <stop offset="100%" stop-color="#6a6d75"/>
             </linearGradient>
+            
+            <radialGradient id="headGrad" cx="40%" cy="40%" r="65%" fx="35%" fy="35%">
+              <stop offset="0%" stop-color="#ffffff" />
+              <stop offset="40%" stop-color="#e0e4e8" />
+              <stop offset="80%" stop-color="#a0a4ac" />
+              <stop offset="100%" stop-color="#70747c" />
+            </radialGradient>
             
             <linearGradient id="ceramicShadow" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stop-color="#ffffff" stop-opacity="0"/>
@@ -248,7 +259,6 @@ class GladosCard extends HTMLElement {
               <stop offset="85%" stop-color="#aa0000"/>
               <stop offset="100%" stop-color="#220000"/>
             </radialGradient>
-
             <radialGradient id="eyeGradDance" cx="50%" cy="50%" r="50%">
               <stop offset="0%" stop-color="#ffffff"/>
               <stop offset="20%" stop-color="#aaffaa"/>
@@ -257,18 +267,15 @@ class GladosCard extends HTMLElement {
               <stop offset="100%" stop-color="#001a00"/>
             </radialGradient>
 
-            <filter id="eyeBloom" x="-120%" y="-120%" width="340%" height="340%">
-              <feGaussianBlur stdDeviation="10" result="b"/>
+            <filter id="eyeBloom" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="5" result="b"/>
               <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
             </filter>
-            <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
-              <feGaussianBlur stdDeviation="2" result="b"/>
+            <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="1.5" result="b"/>
               <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
             </filter>
-            <filter id="ledGlow" x="-60%" y="-60%" width="220%" height="220%">
-              <feGaussianBlur stdDeviation="2.5" result="b"/>
-              <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
+            
             <linearGradient id="lidGrad" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stop-color="#1f2124"/>
               <stop offset="100%" stop-color="#08090a"/>
@@ -310,26 +317,26 @@ class GladosCard extends HTMLElement {
               <line x1="140" y1="128" x2="140" y2="210" stroke="#a0a4ac" stroke-width="1"/>
               <rect x="94" y="135" width="36" height="20" rx="2.5" fill="#050508" stroke="#101014" stroke-width=".6"/>
               <rect x="96" y="137" width="32" height="16" rx="1.5" fill="#020202"/>
-              <g id="led-matrix-left" class="led-matrix" filter="url(#ledGlow)">
+              <g id="led-matrix-left" class="led-matrix">
                 <rect class="led-dot" x="98" y="140" width="28" height="2" rx="1" />
                 <rect class="led-dot" x="98" y="145" width="28" height="2" rx="1" />
                 <rect class="led-dot" x="98" y="150" width="28" height="2" rx="1" />
               </g>
               <rect x="150" y="135" width="36" height="20" rx="2.5" fill="#050508" stroke="#101014" stroke-width=".6"/>
               <rect x="152" y="137" width="32" height="16" rx="1.5" fill="#020202"/>
-              <g id="led-matrix-right" class="led-matrix" filter="url(#ledGlow)">
+              <g id="led-matrix-right" class="led-matrix">
                 <rect class="led-dot" x="154" y="140" width="28" height="2" rx="1" />
                 <rect class="led-dot" x="154" y="145" width="28" height="2" rx="1" />
                 <rect class="led-dot" x="154" y="150" width="28" height="2" rx="1" />
               </g>
               <circle cx="100" cy="180" r="2.5" fill="#0a0a0e" stroke="#101014" stroke-width=".5"/>
-              <circle id="ind-l1" cx="100" cy="180" r="1.5" />
+              <circle id="ind-l1" cx="100" cy="180" r="1.5" class="ind"/>
               <circle cx="108" cy="180" r="2.5" fill="#0a0a0e" stroke="#101014" stroke-width=".5"/>
-              <circle id="ind-l2" cx="108" cy="180" r="1.5" />
+              <circle id="ind-l2" cx="108" cy="180" r="1.5" class="ind"/>
               <circle cx="172" cy="180" r="2.5" fill="#0a0a0e" stroke="#101014" stroke-width=".5"/>
-              <circle id="ind-r1" cx="172" cy="180" r="1.5" />
+              <circle id="ind-r1" cx="172" cy="180" r="1.5" class="ind"/>
               <circle cx="180" cy="180" r="2.5" fill="#0a0a0e" stroke="#101014" stroke-width=".5"/>
-              <circle id="ind-r2" cx="180" cy="180" r="1.5" />
+              <circle id="ind-r2" cx="180" cy="180" r="1.5" class="ind"/>
               <path d="M88 208 L90 224 Q140 240 190 224 L192 208 Z" fill="#0a0a0e" stroke="#050508" stroke-width=".9"/>
               <rect x="118" y="232" width="44" height="20" rx="5" fill="#101014" stroke="#08080c" stroke-width="1"/>
               <rect x="120" y="234" width="40" height="16" rx="4" fill="#08080a"/>
@@ -355,11 +362,11 @@ class GladosCard extends HTMLElement {
                 <ellipse cx="140" cy="285" rx="18" ry="6" fill="#181824" stroke="#0a0a0f" stroke-width="1"/>
                 <ellipse cx="140" cy="285" rx="12" ry="3.8" fill="#101015" stroke="#181824" stroke-width=".6"/>
                 
-                <rect x="75" y="232" width="130" height="247" rx="60" fill="url(#ceramicGrad)"/>
+                <rect x="75" y="232" width="130" height="247" rx="60" fill="url(#headGrad)"/>
                 <rect x="75" y="232" width="130" height="247" rx="60" fill="url(#ceramicShadow)"/>
                 
                 <rect x="93" y="279.25" width="76" height="171.5" rx="38" fill="#000" opacity="0.6" filter="url(#softGlow)"/>
-                <rect x="91" y="277.25" width="78" height="173.5" rx="39" fill="url(#bezelGrad)" stroke="#1a1c22" stroke-width="1"/>
+                <rect x="91" y="277.25" width="78" height="173.5" rx="39" fill="url(#headGrad)" stroke="#1a1c22" stroke-width="1"/>
                 <rect x="93" y="279.25" width="74" height="169.5" rx="37" fill="none" stroke="#6a6d75" stroke-width="1.5"/>
 
                 <g clip-path="url(#cavityClip)">
@@ -376,28 +383,28 @@ class GladosCard extends HTMLElement {
                       </g>
                    </g>
 
-                   <g id="eyeball-assembly" style="transition: transform 0.15s ease-out;">
+                   <g id="eyeball-assembly">
                       <circle cx="130" cy="364" r="26" fill="#1c1e22" stroke="#000" stroke-width="2"/>
                       <circle cx="130" cy="364" r="23" fill="#0a0b0c"/>
                       
                       <circle cx="147" cy="388" r="3.5" fill="#1a0000" stroke="#000" stroke-width="1"/>
-                      <circle id="indicator-dot" cx="147" cy="388" r="2.5" fill="#ff2200" opacity="0.8" filter="url(#softGlow)"/>
+                      <circle id="indicator-dot" cx="147" cy="388" r="2.5" fill="#ff2200" opacity="0.8"/>
 
                       <circle id="eye-halo" cx="130" cy="364" r="25" fill="#330800" opacity=".05" filter="url(#eyeBloom)"/>
                       
-                      <g id="eye-pupil" style="transition: transform 0.15s ease-out;">
-                        <circle id="eye-layer-idle" cx="130" cy="364" r="17.6" fill="url(#eyeGradIdle)" filter="url(#softGlow)" class="eye-layer" opacity="1" />
-                        <circle id="eye-layer-listen" cx="130" cy="364" r="17.6" fill="url(#eyeGradListen)" filter="url(#softGlow)" class="eye-layer" opacity="0" />
-                        <circle id="eye-layer-process" cx="130" cy="364" r="17.6" fill="url(#eyeGradProcess)" filter="url(#softGlow)" class="eye-layer" opacity="0" />
-                        <circle id="eye-layer-respond" cx="130" cy="364" r="17.6" fill="url(#eyeGradRespond)" filter="url(#softGlow)" class="eye-layer" opacity="0" />
-                        <circle id="eye-layer-dance" cx="130" cy="364" r="17.6" fill="url(#eyeGradDance)" filter="url(#softGlow)" class="eye-layer" opacity="0" />
+                      <g id="eye-pupil">
+                        <circle id="eye-layer-idle" cx="130" cy="364" r="17.6" fill="url(#eyeGradIdle)" class="eye-layer" opacity="1" />
+                        <circle id="eye-layer-listen" cx="130" cy="364" r="17.6" fill="url(#eyeGradListen)" class="eye-layer" opacity="0" />
+                        <circle id="eye-layer-process" cx="130" cy="364" r="17.6" fill="url(#eyeGradProcess)" class="eye-layer" opacity="0" />
+                        <circle id="eye-layer-respond" cx="130" cy="364" r="17.6" fill="url(#eyeGradRespond)" class="eye-layer" opacity="0" />
+                        <circle id="eye-layer-dance" cx="130" cy="364" r="17.6" fill="url(#eyeGradDance)" class="eye-layer" opacity="0" />
                         <circle id="eye-center" cx="130" cy="364" r="6.6" fill="#ffe855" />
                         <circle cx="128" cy="362" r="2.2" fill="#ffffff" opacity="0.7" />
                       </g>
 
                       <g clip-path="url(#eyeballClip)">
-                         <path id="eye-lid" d="M 80 200 L 180 200 L 180 364 L 156 364 A 26 26 0 0 0 104 364 L 80 364 Z" fill="url(#lidGrad)" stroke="#000" stroke-width="2" style="transform:translateY(0px); transition:transform 0.7s ease-in-out;"/>
-                         <path id="eye-lid-bottom" d="M 80 500 L 180 500 L 180 364 L 156 364 A 26 26 0 0 1 104 364 L 80 364 Z" fill="url(#lidGradFlip)" stroke="#000" stroke-width="2" style="transform:translateY(0px); transition:transform 0.7s ease-in-out;"/>
+                         <path id="eye-lid" d="M 80 200 L 180 200 L 180 364 L 156 364 A 26 26 0 0 0 104 364 L 80 364 Z" fill="url(#lidGrad)" stroke="#000" stroke-width="2"/>
+                         <path id="eye-lid-bottom" d="M 80 500 L 180 500 L 180 364 L 156 364 A 26 26 0 0 1 104 364 L 80 364 Z" fill="url(#lidGradFlip)" stroke="#000" stroke-width="2"/>
                       </g>
                    </g>
                 </g>
@@ -441,14 +448,15 @@ class GladosCard extends HTMLElement {
     let stateNow = 'idle';
     let currentBaseLid = 0;
 
+    // TABLET OPTIMIZATION: Forcing translate3d to bypass CPU layout passes
     function setHead(rot, tx, ty, scale = 1.0, dur, ease = "cubic-bezier(0.34,1.06,0.64,1)") {
       el.head.style.transition = `transform ${dur}s ${ease}`;
-      el.head.style.transform = `rotate(${rot}deg) translate(${tx}px,${ty}px) scale(${scale})`;
+      el.head.style.transform = `translate3d(${tx}px,${ty}px,0) rotate(${rot}deg) scale(${scale})`;
     }
     function setBodySwivel(rot, sx, dur) {
       el.bodyPivot.style.transition = `transform ${dur || 2.0}s cubic-bezier(0.45,0.05,0.55,0.95)`;
       el.bodyPivot.style.animation = 'none';
-      el.bodyPivot.style.transform = `rotate(${rot}deg) scaleX(${sx || 1})`;
+      el.bodyPivot.style.transform = `rotate(${rot}deg) scaleX(${sx || 1}) translateZ(0)`;
     }
     function resetBodySwivel() {
       el.bodyPivot.style.transition = '';
@@ -459,25 +467,24 @@ class GladosCard extends HTMLElement {
       const px = amount * 17; 
       el.lidTop.style.transition = `transform ${dur}s ease-in-out`;
       el.lidBot.style.transition = `transform ${dur}s ease-in-out`;
-      el.lidTop.style.transform = `translateY(${px}px)`;
-      el.lidBot.style.transform = `translateY(${-px}px)`;
+      el.lidTop.style.transform = `translate3d(0, ${px}px, 0)`;
+      el.lidBot.style.transform = `translate3d(0, ${-px}px, 0)`;
     }
     function setBaseLid(amount, dur = 0.7) {
       currentBaseLid = amount;
       setLid(amount, dur);
     }
     function setPupil(px, py) {
-      el.pupil.style.transform = `translate(${px}px, ${py}px)`;
+      el.pupil.style.transform = `translate3d(${px}px, ${py}px, 0)`;
       let ey = py * 1.5;
-      el.eyeball.style.transform = `translateY(${ey}px)`;
-      el.bellows.style.transform = `translateY(${ey}px)`;
+      el.eyeball.style.transform = `translate3d(0, ${ey}px, 0)`;
+      el.bellows.style.transform = `translate3d(0, ${ey}px, 0)`;
     }
     function setLEDs(color, opacity) {
       el.svg.style.setProperty('--led-color', color);
       el.svg.style.setProperty('--led-opacity', opacity);
     }
 
-    // --- Timers exposed to 'this' for Garbage Collection ---
     this.lidTimer = null;
     this.idleTimer = null;
     this.pupilTimer = null;
@@ -507,7 +514,6 @@ class GladosCard extends HTMLElement {
       if (this.lidTimer) { clearTimeout(this.lidTimer); this.lidTimer = null; }
     };
 
-    // --- Idle Logic ---
     const IDLE_BEHAVIORS = [
       { name: 'passive', exec() { setHead(0, 0, 0, 1.0, 2.4); setBaseLid(0, 1.0); resetBodySwivel(); }, min: 6000, max: 13000, weight: 4 },
       { name: 'scan_right', exec() { setHead(12, 0, -5, 0.98, 1.4); setBaseLid(0, 1.0); setBodySwivel(-2, 1, 1.8); }, min: 3500, max: 7000, weight: 1.5 },
@@ -570,7 +576,7 @@ class GladosCard extends HTMLElement {
       if (this.glitchRaf) { cancelAnimationFrame(this.glitchRaf); this.glitchRaf = null; }
     };
 
-    // --- 32-ROUTINE RANDOMIZED DANCE LOGIC ---
+    // --- 32-ROUTINE DRIFT-FREE DANCE ENGINE ---
     this.stopDanceCycle = () => {
       if (this.danceTimer) { clearTimeout(this.danceTimer); this.danceTimer = null; }
       if (this.danceLedTimer) { clearTimeout(this.danceLedTimer); this.danceLedTimer = null; }
@@ -585,7 +591,7 @@ class GladosCard extends HTMLElement {
       const beatMs = (60 / currentBpm) * 1000;
       const beatSec = beatMs / 1000;
       
-      // OPTIMIZATION: Track perfect delta time to prevent audio drift
+      // TABLET OPTIMIZATION: Drift-free timing tracking.
       let expectedNextTick = performance.now() + beatMs;
 
       const step = () => {
@@ -605,15 +611,16 @@ class GladosCard extends HTMLElement {
         let dirX = isDownBeat ? 1 : -1;
 
         setLEDs('#1DB954', '1'); 
-        el.eyeHalo.style.opacity = (choreoBlock === 7) ? '0.8' : '0.5'; 
-        el.eyeCenter.style.transform = 'scale(1.2)';
+        const maxGlow = (choreoBlock === 7) ? '0.8' : '0.5'; 
+        el.eyeHalo.style.opacity = maxGlow; 
+        el.eyeCenter.style.transform = 'scale(1.2) translateZ(0)';
 
         if (this.danceLedTimer) clearTimeout(this.danceLedTimer);
         this.danceLedTimer = setTimeout(() => {
           if (stateNow === 'dancing') {
             setLEDs('#1DB954', '0.15'); 
             el.eyeHalo.style.opacity = '0.05'; 
-            el.eyeCenter.style.transform = 'scale(1)'; 
+            el.eyeCenter.style.transform = 'scale(1) translateZ(0)'; 
           }
         }, beatMs * 0.3);
 
@@ -673,11 +680,17 @@ class GladosCard extends HTMLElement {
         setBodySwivel(r * -0.8, 1, bodyDur);
         setBaseLid(lid, beatSec * 0.5);
 
-        // Advance logic and dynamically correct timer for zero drift
+        // TABLET OPTIMIZATION: Drift-free calculation
         const executeTick = () => {
           dancePhase++;
           const now = performance.now();
           expectedNextTick += beatMs;
+          
+          // Failsafe: If the tablet hung completely (e.g. screen off), reset the math to prevent it from rapid-firing to catch up.
+          if (expectedNextTick < now) {
+              expectedNextTick = now + beatMs;
+          }
+          
           const delay = Math.max(0, expectedNextTick - now);
           this.danceTimer = setTimeout(step, delay);
         };
@@ -729,7 +742,7 @@ class GladosCard extends HTMLElement {
       el.eyeLayerProcess.style.opacity = '0'; 
       el.eyeLayerRespond.style.opacity = '0';
       el.eyeLayerDance.style.opacity = '0';
-      el.eyeCenter.style.transform = 'scale(1)';
+      el.eyeCenter.style.transform = 'scale(1) translateZ(0)';
       el.eyeCenter.style.transition = 'fill 0.8s ease-in-out';
 
       if (state === 'idle') {
@@ -805,7 +818,6 @@ class GladosCard extends HTMLElement {
       else if (s.includes('process') || s.includes('think')) mapped = 'processing';
       else if (s === 'dancing') mapped = 'dancing';
 
-      // Abort delay if state changes mid-wait
       if (this.respondTimer) {
         clearTimeout(this.respondTimer);
         this.respondTimer = null;
@@ -813,13 +825,12 @@ class GladosCard extends HTMLElement {
 
       const delaySeconds = config.respond_delay !== undefined ? parseFloat(config.respond_delay) : 0;
 
-      // Apply Response Delay
       if (mapped === 'responding' && this._lastEffectiveState !== 'responding' && delaySeconds > 0) {
         this.respondTimer = setTimeout(() => {
           this._lastEffectiveState = 'responding';
           animateGlaDOS('responding', bpm);
         }, delaySeconds * 1000);
-        return; // Stay in current visual state while waiting
+        return; 
       }
 
       this._lastEffectiveState = mapped;
@@ -829,7 +840,6 @@ class GladosCard extends HTMLElement {
     this.applyState('idle', 120);
   }
 
-  // Plugs all memory leaks if Home Assistant hides/removes the card
   disconnectedCallback() {
     if (this.stopIdleCycle) this.stopIdleCycle();
     if (this.stopDanceCycle) this.stopDanceCycle();
@@ -855,7 +865,6 @@ class GladosCardEditor extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
-    // Update the hass object on all pickers immediately when it arrives
     const pickers = this.shadowRoot.querySelectorAll('ha-entity-picker');
     if (pickers.length > 0) {
       pickers.forEach(picker => { picker.hass = hass; });
@@ -961,7 +970,6 @@ class GladosCardEditor extends HTMLElement {
       </div>
     `;
 
-    // Initialize Native Pickers with proper domain filtering
     const entityPicker = this.shadowRoot.querySelector('#entity-picker');
     entityPicker.hass = this._hass;
     entityPicker.value = this._config.entity;
@@ -980,7 +988,6 @@ class GladosCardEditor extends HTMLElement {
     bpmPicker.includeDomains = ['sensor'];
     bpmPicker.addEventListener('value-changed', (ev) => this.configChanged('bpm_entity', ev.detail.value));
 
-    // Initialize Native Sliders
     const delaySlider = this.shadowRoot.querySelector('#delay-slider');
     const delayVal = this.shadowRoot.querySelector('#delay-val');
     delaySlider.addEventListener('change', (ev) => {
@@ -995,7 +1002,6 @@ class GladosCardEditor extends HTMLElement {
       this.configChanged('zoom', Number(ev.target.value));
     });
 
-    // Initialize Native Toggle Switch
     const bgSwitch = this.shadowRoot.querySelector('#bg-switch');
     bgSwitch.checked = this._config.transparent_bg === true;
     bgSwitch.addEventListener('change', (ev) => {
@@ -1004,11 +1010,9 @@ class GladosCardEditor extends HTMLElement {
   }
 }
 
-// Register both custom elements
 customElements.define('glados-card-editor', GladosCardEditor);
 customElements.define('glados-card', GladosCard);
 
-// Add to Home Assistant visual card picker
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: 'glados-card',
